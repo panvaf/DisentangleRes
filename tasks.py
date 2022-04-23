@@ -47,10 +47,10 @@ class TwoAlternativeForcedChoice(ngym.TrialEnv):
 
         self.choices = np.arange(3)
 
-        name = {'fixation': 0, 'stimulus': range(1, 3)}
+        name = {'fixation': 0, 'stimulus': range(1, 3), 'task': range(3, 3+rule_sz)}
         self.observation_space = spaces.Box(
             -np.inf, np.inf, shape=(3+rule_sz,), dtype=np.float32, name=name)
-        name = {'fixation': 0, 'choice': range(1, 3), 'task': range(4, 4+rule_sz)}
+        name = {'fixation': 0, 'choice': range(1, 3)}
         self.action_space = spaces.Discrete(3, name=name)
 
     def _new_trial(self, **kwargs):
@@ -160,10 +160,10 @@ class AttributeIntegration(ngym.TrialEnv):
 
         self.choices = np.arange(3)
 
-        name = {'fixation': 0, 'stimulus': range(1, 3)}
+        name = {'fixation': 0, 'stimulus': range(1, 3), 'task': range(3, 3+rule_sz)}
         self.observation_space = spaces.Box(
             -np.inf, np.inf, shape=(3+rule_sz,), dtype=np.float32, name=name)
-        name = {'fixation': 0, 'choice': range(1, 3), 'task': range(4, 4+rule_sz)}
+        name = {'fixation': 0, 'choice': range(1, 3)}
         self.action_space = spaces.Discrete(3, name=name)
 
     def _new_trial(self, **kwargs):

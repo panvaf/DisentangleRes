@@ -3,15 +3,20 @@ Train recurrent neural network.
 """
 
 import neurogym as ngym
+from neurogym import spaces
 import tasks
+import util
+
+# Tasks
+task = ['TwoAlternativeForcedChoice','AttributeIntegration']
+task_rules = util.assign_task_rules(task)
 
 # Environment
-kwargs = {'dt': 100}
 seq_len = 100
+tenv = tasks.AttributeIntegration(rule_vec=task_rules['AttributeIntegration'])
 
 # Make supervised dataset
-dataset = ngym.Dataset(tasks.TwoAlternativeForcedChoice, env_kwargs=kwargs, 
-                       batch_size=16, seq_len=seq_len)
+dataset = ngym.Dataset(tenv, batch_size=16, seq_len=seq_len)
 
 # A sample environment from dataset
 env = dataset.env
