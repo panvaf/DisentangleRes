@@ -3,14 +3,16 @@ Train recurrent neural network.
 """
 
 import neurogym as ngym
-from neurogym import spaces
 import tasks
 import util
 from RNN import RNN
 import torch.optim as optim
+import torch.nn as nn
 import torch
 import numpy as np
 from random import randint
+import os
+from pathlib import Path
 
 # Tasks
 task = {'TwoAlternativeForcedChoice':tasks.TwoAlternativeForcedChoice,
@@ -20,11 +22,11 @@ n_task = len(task)
 
 # Constants
 n_neu = 64          # number of recurrent neurons
-seq_len = 100       # size of trial sequence
-n_batch = 1e5       # number of batches
-dt = 1e-1           # step size
-tau = 1e-1          # neuronal time constant (synaptic+membrane)
-n_sd = .1           # standard deviation of injected noise
+batch_sz = 16       # batch size
+n_batch = 1e4       # number of batches
+dt = 100            # step size
+tau = 100           # neuronal time constant (synaptic+membrane)
+n_sd = 1            # standard deviation of injected noise
 print_every = int(n_batch/100)
 
 # Environment
@@ -33,15 +35,20 @@ timing = {'fixation': 100,
           'delay': 0,
           'decision': 100}
 grace = 200
-# Mask to weight errors during integration and decision equally
-mask_w = (sum(timing.values()) - grace - timing['decision'])/timing['decision']
-mask = torch.ones(n_batch,n_t,n_in); mask[:,0:n_grace,:] = 0
+trial_sz = int(sum(timing.values())/dt) 
+n_grace = int(grace/dt); n_decision = int(timing['decision']/dt)
 
-tenvs = [value(timing=timing,grace=grace,rule_vec=task_rules[key]) for key, 
-         value in task.items()]
+# Save location
+data_path = str(Path(os.getcwd()).parent) + '\\trained_networks\\'
+net_file = 'Joint' + str(n_neu) + \
+            (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
+            (('Noise' + str(n_sd)) if n_sd else '') + \
+            (('tau' + str(tau)) if tau != 100 else '')
 
 # Make supervised datasets
-datasets = [ngym.Dataset(tenv, batch_size=16, seq_len=seq_len) for tenv in tenvs]
+tenvs = [value(timing=timing,rule_vec=task_rules[key]) for key, value in task.items()]
+
+datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz) for tenv in tenvs]
 
 # A sample environment from dataset
 env = datasets[0].env
@@ -52,24 +59,32 @@ _ = ngym.utils.plot_env(env, num_trials=2)
 n_in = env.observation_space.shape[0]
 n_out = env.action_space.n
 
+# Mask to weight errors during integration and decision equally
+mask_w = (sum(timing.values()) - grace - timing['decision'])/timing['decision']
+mask = np.ones((trial_sz,batch_sz)); mask[-n_decision-n_grace:-n_decision,:] = 0
+mask[-n_decision:,:] = mask_w
+
 # Initialize RNN  
-net = RNN(n_in,n_neu,n_out,n_sd,tau*1e3,dt*1e3)
+net = RNN(n_in,n_neu,n_out,n_sd,tau,dt)
 
 # Optimizer
 opt = optim.Adam(net.parameters(), lr=0.001)
 
+# Loss
+criterion = nn.CrossEntropyLoss()
+
 # Train RNN
-loss = 0; k = 0
+total_loss = 0; k = 0
 loss_hist = np.zeros(100)
 
 for i in range(int(n_batch)):
     # Randomly pick task
-    dataset = datasets[randint(n_task)]
+    dataset = datasets[randint(0,n_task-1)]
     # Generate data for current batch
     inputs, target = dataset()
     
     inputs = torch.from_numpy(inputs).type(torch.float)
-    target = torch.from_numpy(target.flatten()).type(torch.long)
+    target = torch.from_numpy(target).type(torch.long)
     
     # Empty gradient buffers
     opt.zero_grad()
@@ -78,19 +93,23 @@ for i in range(int(n_batch)):
     output, fr = net(inputs)
     
     # Compute loss
-    _, normed_loss = util.MSELoss_weighted(output,target,mask)
-    loss += normed_loss.item()
+    loss = criterion(output.view(-1,n_out),target.flatten())
+    total_loss += loss.item()
     
     # Backpopagate loss
-    normed_loss.backward()
+    loss.backward()
     
     # Update weights
     opt.step()
     
     # Store history of average training loss
     if (i % print_every == 0):
-        loss /= print_every
+        total_loss /= print_every
         print('{} % of the simulation complete'.format(round(i/n_batch*100)))
-        print('Loss {:0.3f}'.format(loss))
-        loss_hist[k] = loss
+        print('Loss {:0.3f}'.format(total_loss))
+        loss_hist[k] = total_loss
         loss = 0; k += 1
+        
+# Save network
+torch.save({'state_dict': net.state_dict(),'loss_hist': loss_hist},
+                    data_path + net_file + '.pth')

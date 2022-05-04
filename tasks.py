@@ -18,11 +18,9 @@ class TwoAlternativeForcedChoice(ngym.TrialEnv):
         sigma: float, input noise level
     """
 
-    def __init__(self, dt=100, grace=200, rewards=None, timing=None, sigma=1.0, 
-                 rule_vec = None):
+    def __init__(self, dt=100, rewards=None, timing=None, sigma=1.0, rule_vec = None):
         super().__init__(dt=dt)
         
-        self.grace = grace / self.dt
         self.sigma = sigma / np.sqrt(self.dt)  # Input noise
         
         # Rule vector
@@ -128,11 +126,9 @@ class AttributeIntegration(ngym.TrialEnv):
         sigma: float, input noise level
     """
 
-    def __init__(self, dt=100, grace=200, rewards=None, timing=None, sigma=1.0, 
-                 rule_vec = None):
+    def __init__(self, dt=100, rewards=None, timing=None, sigma=1.0, rule_vec = None):
         super().__init__(dt=dt)
         
-        self.grace = grace / self.dt
         self.sigma = sigma / np.sqrt(self.dt)  # Input noise
         # Rule vector
         if rule_vec is None:

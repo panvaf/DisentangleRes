@@ -3,6 +3,7 @@ Various utilities.
 """
 
 import numpy as np
+import torch
 
 def assign_task_rules(tasks):
     """
@@ -26,3 +27,16 @@ def assign_task_rules(tasks):
         task_rules[task] = I[i]
     
     return task_rules
+
+
+# Weighted mean squared error loss
+
+def MSELoss_weighted(output,target,mask):
+    loss = torch.sum(mask*(output - target)**2)
+    size = torch.numel(target)
+    norm = torch.sum(mask)
+    
+    avg_loss = loss/size
+    normed_loss = loss/norm
+    
+    return avg_loss, normed_loss
