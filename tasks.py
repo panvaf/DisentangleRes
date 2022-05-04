@@ -18,10 +18,11 @@ class TwoAlternativeForcedChoice(ngym.TrialEnv):
         sigma: float, input noise level
     """
 
-    def __init__(self, dt=100, rewards=None, timing=None, sigma=1.0, 
+    def __init__(self, dt=100, grace=200, rewards=None, timing=None, sigma=1.0, 
                  rule_vec = None):
         super().__init__(dt=dt)
         
+        self.grace = grace / self.dt
         self.sigma = sigma / np.sqrt(self.dt)  # Input noise
         
         # Rule vector
@@ -34,12 +35,7 @@ class TwoAlternativeForcedChoice(ngym.TrialEnv):
         self.rewards = {'abort': -0.1, 'correct': +1., 'fail': 0.}
         if rewards:
             self.rewards.update(rewards)
-
-        self.timing = {
-            'fixation': 100,
-            'stimulus': 2000,
-            'delay': 0,
-            'decision': 100}
+        
         if timing:
             self.timing.update(timing)
 
@@ -132,10 +128,11 @@ class AttributeIntegration(ngym.TrialEnv):
         sigma: float, input noise level
     """
 
-    def __init__(self, dt=100, rewards=None, timing=None, sigma=1.0, 
+    def __init__(self, dt=100, grace=200, rewards=None, timing=None, sigma=1.0, 
                  rule_vec = None):
         super().__init__(dt=dt)
         
+        self.grace = grace / self.dt
         self.sigma = sigma / np.sqrt(self.dt)  # Input noise
         # Rule vector
         if rule_vec is None:
@@ -148,11 +145,6 @@ class AttributeIntegration(ngym.TrialEnv):
         if rewards:
             self.rewards.update(rewards)
 
-        self.timing = {
-            'fixation': 100,
-            'stimulus': 2000,
-            'delay': 0,
-            'decision': 100}
         if timing:
             self.timing.update(timing)
 
