@@ -23,7 +23,7 @@ class RNN(nn.Module):
         self.inp_to_rec = nn.Linear(inp_size, rec_size)
         self.rec_to_rec = nn.Linear(rec_size, rec_size)
         self.rec_to_out = nn.Linear(rec_size, out_size)
-        
+
 
     def init(self,inp_shape):
         # Initializes network activity to zero

@@ -15,18 +15,17 @@ import os
 from pathlib import Path
 
 # Tasks
-task = {'TwoAlternativeForcedChoice':tasks.TwoAlternativeForcedChoice,
-        'AttributeIntegration':tasks.AttributeIntegration}
+task = {'TwoAlternativeForcedChoice':tasks.TwoAlternativeForcedChoice}
 task_rules = util.assign_task_rules(task)
 n_task = len(task)
 
 # Constants
 n_neu = 64          # number of recurrent neurons
 batch_sz = 16       # batch size
-n_batch = 1e4       # number of batches
+n_batch = 1e3       # number of batches
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
-n_sd = 1            # standard deviation of injected noise
+n_sd = 0            # standard deviation of injected noise
 print_every = int(n_batch/100)
 
 # Environment
@@ -35,20 +34,23 @@ timing = {'fixation': 100,
           'delay': 0,
           'decision': 100}
 grace = 200
-trial_sz = int(sum(timing.values())/dt) 
+#trial_sz = int(sum(timing.values())/dt) 
+trial_sz = 88
 n_grace = int(grace/dt); n_decision = int(timing['decision']/dt)
 
 # Save location
 data_path = str(Path(os.getcwd()).parent) + '\\trained_networks\\'
-net_file = 'Joint' + str(n_neu) + \
+net_file = 'Perc' + str(n_neu) + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
             (('Noise' + str(n_sd)) if n_sd else '') + \
             (('tau' + str(tau)) if tau != 100 else '')
 
 # Make supervised datasets
-tenvs = [value(timing=timing,rule_vec=task_rules[key]) for key, value in task.items()]
+#tenvs = [value(timing=timing,rule_vec=task_rules[key]) for key, value in task.items()]
+tenvs = ['PerceptualDecisionMaking-v0']
+kwargs = {'dt': 100, 'sigma': 1}
 
-datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz) for tenv in tenvs]
+datasets = [ngym.Dataset(tenv,env_kwargs=kwargs,batch_size=batch_sz,seq_len=trial_sz) for tenv in tenvs]
 
 # A sample environment from dataset
 env = datasets[0].env
@@ -68,7 +70,7 @@ mask[-n_decision:,:] = mask_w
 net = RNN(n_in,n_neu,n_out,n_sd,tau,dt)
 
 # Optimizer
-opt = optim.Adam(net.parameters(), lr=0.001)
+opt = optim.Adam(net.parameters(), lr=0.01)
 
 # Loss
 criterion = nn.CrossEntropyLoss()
@@ -83,6 +85,11 @@ for i in range(int(n_batch)):
     # Generate data for current batch
     inputs, target = dataset()
     
+    # Reshape so that batch is first dimension
+    inputs = np.transpose(inputs,(1,0,2))
+    target = np.transpose(target,(1,0))
+    
+    # Turn into tensors
     inputs = torch.from_numpy(inputs).type(torch.float)
     target = torch.from_numpy(target).type(torch.long)
     
