@@ -40,17 +40,17 @@ n_grace = int(grace/dt); n_decision = int(timing['decision']/dt)
 
 # Save location
 data_path = str(Path(os.getcwd()).parent) + '\\trained_networks\\'
-net_file = 'Perc' + str(n_neu) + \
+net_file = '2AFC' + str(n_neu) + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
             (('Noise' + str(n_sd)) if n_sd else '') + \
             (('tau' + str(tau)) if tau != 100 else '')
 
 # Make supervised datasets
-#tenvs = [value(timing=timing,rule_vec=task_rules[key]) for key, value in task.items()]
-tenvs = ['PerceptualDecisionMaking-v0']
-kwargs = {'dt': 100, 'sigma': 1}
+tenvs = [value(timing=timing,rule_vec=task_rules[key]) for key, value in task.items()]
+#tenvs = ['PerceptualDecisionMaking-v0']
+#kwargs = {'dt': 100, 'sigma': 1}
 
-datasets = [ngym.Dataset(tenv,env_kwargs=kwargs,batch_size=batch_sz,seq_len=trial_sz) for tenv in tenvs]
+datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz) for tenv in tenvs]
 
 # A sample environment from dataset
 env = datasets[0].env

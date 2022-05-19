@@ -13,14 +13,15 @@ from sklearn.decomposition import PCA
 import util
 import tasks
 import matplotlib.pyplot as plt
-import neurogym as ngym
+from random import randint
+#import neurogym as ngym
 
 # Parameters
 n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 0            # standard deviation of injected noise
-n_in = 3            # number of inputs
+n_in = 4            # number of inputs
 n_out = 3           # number of outputs
 n_trial = 100      # number of example trials to plot
 
@@ -36,14 +37,14 @@ timing = {'fixation': 100,
           'decision': 100}
 tenvs = [value(timing=timing,rule_vec=task_rules[key]) for key, value in task.items()]
 
-dataset = ngym.Dataset('PerceptualDecisionMaking-v0',batch_size=16,seq_len=22)
+#dataset = ngym.Dataset('PerceptualDecisionMaking-v0',batch_size=16,seq_len=22)
 
 # A sample environment from dataset
-tenv = dataset.env
+#tenv = dataset.env
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '\\trained_networks\\'
-net_file = 'Perc64batch1e3'
+net_file = '2AFC64batch1e3'
 
 net = RNN(n_in,n_neu,n_out,n_sd,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -56,7 +57,7 @@ activity_dict = {}; output_dict = {}; trial_info = {}
 for i in range(n_trial):
     
     # Pick environment and generate a trial
-    #tenv = tenvs[randint(0,n_task-1)]
+    tenv = tenvs[randint(0,n_task-1)]
     tenv.new_trial()
     ob, gt = tenv.ob, tenv.gt
     inp = torch.from_numpy(ob[np.newaxis, :, :]).type(torch.float)
@@ -83,11 +84,11 @@ batch_size = 64
 fixedpoints = np.empty([batch_size,n_neu])
 
 # Inputs are zero, so that internal representation is not affected
-inp = np.tile([1, 0.5, 0.5],(batch_size, 1))
+inp = np.tile([1, 0.5, 0.5, 1],(batch_size, 1))
 inp = torch.tensor(inp, dtype=torch.float32)
 
 # Initialize hidden activity randomly                                                                         
-hidden = torch.tensor(np.random.rand(batch_size, n_neu)*20,
+hidden = torch.tensor(np.random.rand(batch_size, n_neu)*40,
                   requires_grad=True, dtype=torch.float32)
 
 # Use Adam optimizer
