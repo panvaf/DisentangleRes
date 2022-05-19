@@ -15,7 +15,8 @@ import os
 from pathlib import Path
 
 # Tasks
-task = {'TwoAlternativeForcedChoice':tasks.TwoAlternativeForcedChoice}
+task = {'TwoAlternativeForcedChoice':tasks.TwoAlternativeForcedChoice,
+        'AttributeIntegration':tasks.AttributeIntegration}
 task_rules = util.assign_task_rules(task)
 n_task = len(task)
 
@@ -40,7 +41,7 @@ n_grace = int(grace/dt); n_decision = int(timing['decision']/dt)
 
 # Save location
 data_path = str(Path(os.getcwd()).parent) + '\\trained_networks\\'
-net_file = '2AFC' + str(n_neu) + \
+net_file = 'Joint' + str(n_neu) + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
             (('Noise' + str(n_sd)) if n_sd else '') + \
             (('tau' + str(tau)) if tau != 100 else '')
