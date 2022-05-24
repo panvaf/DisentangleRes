@@ -21,13 +21,12 @@ n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 0            # standard deviation of injected noise
-n_in = 5            # number of inputs
-n_out = 3           # number of outputs
+n_in = 3            # number of inputs
+n_out = 2           # number of outputs
 n_trial = 100      # number of example trials to plot
 
 # Tasks
-task = {'TwoAlternativeForcedChoice':tasks.TwoAlternativeForcedChoice,
-        'AttributeIntegration':tasks.AttributeIntegration}
+task = {'Multitask':tasks.Multitask}
 task_rules = util.assign_task_rules(task)
 n_task = len(task)
 
@@ -36,7 +35,7 @@ timing = {'fixation': 100,
           'stimulus': 2000,
           'delay': 0,
           'decision': 100}
-tenvs = [value(timing=timing,rule_vec=task_rules[key]) for key, value in task.items()]
+tenvs = [value(timing=timing) for key, value in task.items()]
 
 #dataset = ngym.Dataset('PerceptualDecisionMaking-v0',batch_size=16,seq_len=22)
 
@@ -44,8 +43,8 @@ tenvs = [value(timing=timing,rule_vec=task_rules[key]) for key, value in task.it
 #tenv = dataset.env
 
 # Load network
-data_path = str(Path(os.getcwd()).parent) + '\\trained_networks\\'
-net_file = 'Joint64batch1e3'
+data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
+net_file = 'Multitask64batch1e3'
 
 net = RNN(n_in,n_neu,n_out,n_sd,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -81,19 +80,18 @@ pca.fit(activity)
 for param in net.parameters():
     param.requires_grad = False
 
-batch_size = 64
+batch_size = 128
 fixedpoints = np.empty([batch_size,n_task,n_neu])
 
 for j in range(n_task):
     print('Task {} out of {}'.format(j+1,n_task))
 
     # Inputs are zero, so that internal representation is not affected
-    inp = np.tile(np.concatenate(([1, 0, 0],list(task_rules.values())[randint(0,n_task-1)])),
-                  (batch_size, 1))
+    inp = np.tile([1, 0, 0],(batch_size, 1))
     inp = torch.tensor(inp, dtype=torch.float32)
     
     # Initialize hidden activity randomly                                                                         
-    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*20,
+    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*40,
                       requires_grad=True, dtype=torch.float32)
     
     # Use Adam optimizer
@@ -129,11 +127,8 @@ ax = plt.axes(projection='3d')
 for i in range(n_trial):
     activity_pc = pca.transform(activity_dict[i])
     trial = trial_info[i]
-    if 'thres' in trial.keys():
-        color = 'red'
-    else:
-        color = 'blue'
-    alpha = .2 if trial['ground_truth'] == 0 else 1
+    color = 'red' if trial['ground_truth'][0] == 0 else 'blue'
+    alpha = .2 if trial['ground_truth'][1] == 0 else 1
     ax.plot3D(activity_pc[:, 0], activity_pc[:, 1], activity_pc[:, 2], 'o-', 
                       color=color, alpha=alpha)
 

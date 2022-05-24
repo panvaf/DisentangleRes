@@ -15,9 +15,8 @@ import os
 from pathlib import Path
 
 # Tasks
-task = {'TwoAlternativeForcedChoice':tasks.TwoAlternativeForcedChoice,
-        'AttributeIntegration':tasks.AttributeIntegration}
-task_rules = util.assign_task_rules(task)
+task = {'Multitask':tasks.Multitask}
+#task_rules = util.assign_task_rules(task)
 n_task = len(task)
 
 # Constants
@@ -40,14 +39,14 @@ trial_sz = 88
 n_grace = int(grace/dt); n_decision = int(timing['decision']/dt)
 
 # Save location
-data_path = str(Path(os.getcwd()).parent) + '\\trained_networks\\'
-net_file = 'Joint' + str(n_neu) + \
+data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
+net_file = 'Multitask' + str(n_neu) + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
             (('Noise' + str(n_sd)) if n_sd else '') + \
             (('tau' + str(tau)) if tau != 100 else '')
 
 # Make supervised datasets
-tenvs = [value(timing=timing,rule_vec=task_rules[key]) for key, value in task.items()]
+tenvs = [value(timing=timing) for key, value in task.items()]
 #tenvs = ['PerceptualDecisionMaking-v0']
 #kwargs = {'dt': 100, 'sigma': 1}
 
@@ -56,11 +55,12 @@ datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz) for tenv in 
 # A sample environment from dataset
 env = datasets[0].env
 # Visualize the environment with 2 sample trials
-_ = ngym.utils.plot_env(env, num_trials=2)
+#_ = ngym.utils.plot_env(env, num_trials=2)
 
 # Network input and output size
 n_in = env.observation_space.shape[0]
-n_out = env.action_space.n
+#n_out = env.action_space.n
+n_out = 2
 
 # Mask to weight errors during integration and decision equally
 mask_w = (sum(timing.values()) - grace - timing['decision'])/timing['decision']
@@ -74,7 +74,7 @@ net = RNN(n_in,n_neu,n_out,n_sd,tau,dt)
 opt = optim.Adam(net.parameters(), lr=0.01)
 
 # Loss
-criterion = nn.CrossEntropyLoss()
+#criterion = util.CrossEntropyLoss()
 
 # Train RNN
 total_loss = 0; k = 0
@@ -88,7 +88,7 @@ for i in range(int(n_batch)):
     
     # Reshape so that batch is first dimension
     inputs = np.transpose(inputs,(1,0,2))
-    target = np.transpose(target,(1,0))
+    target = np.transpose(target,(1,0,2))
     
     # Turn into tensors
     inputs = torch.from_numpy(inputs).type(torch.float)
@@ -101,7 +101,8 @@ for i in range(int(n_batch)):
     output, fr = net(inputs)
     
     # Compute loss
-    loss = criterion(output.view(-1,n_out),target.flatten())
+    #loss = criterion(output.view(-1,n_out),target.flatten())
+    loss, _ = util.MSELoss_weighted(output, target, torch.ones_like(target))
     total_loss += loss.item()
     
     # Backpopagate loss
