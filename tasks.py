@@ -5,6 +5,7 @@ Classes for tasks to train on.
 import numpy as np
 import neurogym as ngym
 from neurogym import spaces
+from math import tan
 
 
 class TwoAlternativeForcedChoice(ngym.TrialEnv):
@@ -240,6 +241,11 @@ class Multitask(ngym.TrialEnv):
         self.sigma = sigma / np.sqrt(self.dt)  # Input noise
         self.n_task = n_task
         
+        # Divide plane in evenly spaced classification problems
+        dphi = np.pi/n_task
+        phis = np.arange(n_task)*dphi + dphi/2
+        self.alphas = [tan(phi) for phi in phis]
+        
         # Rewards
         self.rewards = {'abort': -0.1, 'correct': +1., 'fail': 0.}
         if rewards:
@@ -256,7 +262,7 @@ class Multitask(ngym.TrialEnv):
         self.observation_space = spaces.Box(
             -np.inf, np.inf, shape=(3,), dtype=np.float32, name=name)
         name = {'fixation': 0, 'choice': range(1, 3)}
-        self.action_space = spaces.MultiDiscrete([3,3])
+        self.action_space = spaces.MultiDiscrete(np.repeat([3],self.n_task))
 
     def _new_trial(self, **kwargs):
         """
@@ -269,14 +275,12 @@ class Multitask(ngym.TrialEnv):
         """
         # Trial info
         stim = self.rng.rand(2)
-        thres = 1
         ground_truth = np.zeros(self.n_task)
-        ground_truth[0] = stim[1] > stim[0]
-        ground_truth[1] = thres < np.sum(stim)
+        for i, alpha in enumerate(self.alphas):
+            ground_truth[i] = stim[1] > alpha*stim[0] + 0.5*(1-alpha)
         
         trial = {
             'stim': stim,
-            'thres': thres,
             'ground_truth': ground_truth
         }
         trial.update(kwargs)

@@ -25,8 +25,9 @@ batch_sz = 16       # batch size
 n_batch = 1e3       # number of batches
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
-n_sd = 0            # standard deviation of injected noise
+n_sd = 1            # standard deviation of injected noise
 print_every = int(n_batch/100)
+n_out = 6
 
 # Environment
 timing = {'fixation': 100,
@@ -43,10 +44,11 @@ data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
 net_file = 'Multitask' + str(n_neu) + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
             (('Noise' + str(n_sd)) if n_sd else '') + \
-            (('tau' + str(tau)) if tau != 100 else '')
+            (('tau' + str(tau)) if tau != 100 else '') + \
+            (('nTask' + str(n_out)) if n_out != 2 else '')
 
 # Make supervised datasets
-tenvs = [value(timing=timing) for key, value in task.items()]
+tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out) for key, value in task.items()]
 #tenvs = ['PerceptualDecisionMaking-v0']
 #kwargs = {'dt': 100, 'sigma': 1}
 
@@ -60,7 +62,6 @@ env = datasets[0].env
 # Network input and output size
 n_in = env.observation_space.shape[0]
 #n_out = env.action_space.n
-n_out = 2
 
 # Mask to weight errors during integration and decision equally
 mask_w = (sum(timing.values()) - grace - timing['decision'])/timing['decision']

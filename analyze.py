@@ -22,7 +22,7 @@ dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 0            # standard deviation of injected noise
 n_in = 3            # number of inputs
-n_out = 2           # number of outputs
+n_out = 6           # number of outputs
 n_trial = 100      # number of example trials to plot
 
 # Tasks
@@ -44,7 +44,7 @@ tenvs = [value(timing=timing) for key, value in task.items()]
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'Multitask64batch1e3'
+net_file = 'Multitask64batch1e3Noise1nTask6'
 
 net = RNN(n_in,n_neu,n_out,n_sd,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -80,18 +80,18 @@ pca.fit(activity)
 for param in net.parameters():
     param.requires_grad = False
 
-batch_size = 128
-fixedpoints = np.empty([batch_size,n_task,n_neu])
+batch_size = 64
+fixedpoints = np.empty([batch_size,2,n_neu])
 
-for j in range(n_task):
+for j in range(2):
     print('Task {} out of {}'.format(j+1,n_task))
 
     # Inputs are zero, so that internal representation is not affected
-    inp = np.tile([1, 0, 0],(batch_size, 1))
+    inp = np.tile([1, 1-j, j],(batch_size, 1))
     inp = torch.tensor(inp, dtype=torch.float32)
     
     # Initialize hidden activity randomly                                                                         
-    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*40,
+    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*30,
                       requires_grad=True, dtype=torch.float32)
     
     # Use Adam optimizer
