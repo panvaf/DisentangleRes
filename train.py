@@ -15,7 +15,7 @@ import os
 from pathlib import Path
 
 # Tasks
-task = {'Multitask':tasks.Multitask}
+task = {'LinearClassification':tasks.LinearClassification}
 #task_rules = util.assign_task_rules(task)
 n_task = len(task)
 

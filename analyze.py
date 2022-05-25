@@ -20,13 +20,13 @@ from random import randint
 n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
-n_sd = 0            # standard deviation of injected noise
+n_sd = 1            # standard deviation of injected noise
 n_in = 3            # number of inputs
 n_out = 6           # number of outputs
 n_trial = 100      # number of example trials to plot
 
 # Tasks
-task = {'Multitask':tasks.Multitask}
+task = {'LinearClassification':tasks.LinearClassification}
 task_rules = util.assign_task_rules(task)
 n_task = len(task)
 
@@ -35,7 +35,7 @@ timing = {'fixation': 100,
           'stimulus': 2000,
           'delay': 0,
           'decision': 100}
-tenvs = [value(timing=timing) for key, value in task.items()]
+tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out) for key, value in task.items()]
 
 #dataset = ngym.Dataset('PerceptualDecisionMaking-v0',batch_size=16,seq_len=22)
 
@@ -81,17 +81,17 @@ for param in net.parameters():
     param.requires_grad = False
 
 batch_size = 64
-fixedpoints = np.empty([batch_size,2,n_neu])
+fixedpoints = np.empty([batch_size,1,n_neu])
 
-for j in range(2):
+for j in range(1):
     print('Task {} out of {}'.format(j+1,n_task))
 
     # Inputs are zero, so that internal representation is not affected
-    inp = np.tile([1, 1-j, j],(batch_size, 1))
+    inp = np.tile([1, 0, 0],(batch_size, 1))
     inp = torch.tensor(inp, dtype=torch.float32)
     
     # Initialize hidden activity randomly                                                                         
-    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*30,
+    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*40,
                       requires_grad=True, dtype=torch.float32)
     
     # Use Adam optimizer
