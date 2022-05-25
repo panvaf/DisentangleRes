@@ -15,12 +15,13 @@ import os
 from pathlib import Path
 
 # Tasks
-task = {'LinearClassification':tasks.LinearClassification}
+task = {'LinearClassification':tasks.LinearClassification,
+        'MultiplyClassification':tasks.MultiplyClassification}
 #task_rules = util.assign_task_rules(task)
 n_task = len(task)
 
 # Constants
-n_neu = 64          # number of recurrent neurons
+n_neu = 128         # number of recurrent neurons
 batch_sz = 16       # batch size
 n_batch = 1e3       # number of batches
 dt = 100            # step size
@@ -41,7 +42,7 @@ n_grace = int(grace/dt); n_decision = int(timing['decision']/dt)
 
 # Save location
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'Multitask' + str(n_neu) + \
+net_file = 'LinMult' + str(n_neu) + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
             (('Noise' + str(n_sd)) if n_sd else '') + \
             (('tau' + str(tau)) if tau != 100 else '') + \

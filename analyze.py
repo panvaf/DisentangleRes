@@ -20,9 +20,9 @@ from random import randint
 n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
-n_sd = 1            # standard deviation of injected noise
+n_sd = 0            # standard deviation of injected noise
 n_in = 3            # number of inputs
-n_out = 6           # number of outputs
+n_out = 2           # number of outputs
 n_trial = 100      # number of example trials to plot
 
 # Tasks
@@ -44,7 +44,7 @@ tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out) for key, value in task.ite
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'Multitask64batch1e3Noise1nTask6'
+net_file = 'Multitask64batch1e3'
 
 net = RNN(n_in,n_neu,n_out,n_sd,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -91,7 +91,8 @@ for j in range(1):
     inp = torch.tensor(inp, dtype=torch.float32)
     
     # Initialize hidden activity randomly                                                                         
-    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*40,
+    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*40+
+                          activity_dict[randint(0,n_trial-1)][10],
                       requires_grad=True, dtype=torch.float32)
     
     # Use Adam optimizer

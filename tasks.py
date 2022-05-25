@@ -343,8 +343,8 @@ class MultiplyClassification(ngym.TrialEnv):
         # Trial info
         stim = self.rng.rand(2)
         ground_truth = np.zeros(self.n_task)
-        for i, alpha in enumerate(self.alphas):
-            ground_truth[i] = stim[1]*stim[0] > self.thres[i]
+        for i, thres in enumerate(self.thres):
+            ground_truth[i] = stim[1]*stim[0] > thres
         
         trial = {
             'stim': stim,
@@ -436,8 +436,8 @@ class DivideClassification(ngym.TrialEnv):
         # Trial info
         stim = self.rng.rand(2)
         ground_truth = np.zeros(self.n_task)
-        for i, alpha in enumerate(self.alphas):
-            ground_truth[i] = stim[1]/stim[0] > self.thres[i]
+        for i, thres in enumerate(self.thres):
+            ground_truth[i] = stim[1]/stim[0] > thres
         
         trial = {
             'stim': stim,
