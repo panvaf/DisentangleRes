@@ -22,7 +22,7 @@ dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 0            # standard deviation of injected noise
 n_in = 3            # number of inputs
-n_out = 2           # number of outputs
+n_out = 6           # number of outputs
 n_trial = 100      # number of example trials to plot
 
 # Tasks
@@ -90,9 +90,13 @@ for j in range(1):
     inp = np.tile([1, 0, 0],(batch_size, 1))
     inp = torch.tensor(inp, dtype=torch.float32)
     
-    # Initialize hidden activity randomly                                                                         
-    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*40+
-                          activity_dict[randint(0,n_trial-1)][10],
+    # Initialize hidden activity                                                                    
+    hdn = np.zeros((batch_size, n_neu))
+    idx_tr = np.random.choice(n_trial,batch_size,replace=False)
+    idx_t = np.random.choice(ob.shape[0],batch_size)
+    for i in range(batch_size):
+        hdn[i] = torch.from_numpy(activity_dict[idx_tr[i]][idx_t[i]])
+    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*40+hdn,
                       requires_grad=True, dtype=torch.float32)
     
     # Use Adam optimizer
@@ -137,8 +141,10 @@ for i in range(n_trial):
 cols = ['green','yellow']
 for i in range(fixedpoints.shape[1]):
     fixedpoints_pc = pca.transform(fixedpoints[:,i])
+    hdn_pc = pca.transform(hdn)
     ax.plot3D(fixedpoints_pc[:, 0], fixedpoints_pc[:, 1], fixedpoints_pc[:, 2],
               'x', color=cols[i])
+    ax.plot3D(hdn_pc[:, 0], hdn_pc[:, 1], hdn_pc[:, 2], 'x', color='magenta')
 
 plt.xlabel('PC 1')
 plt.ylabel('PC 2')
