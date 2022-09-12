@@ -16,13 +16,26 @@ import matplotlib.pyplot as plt
 from random import randint
 #import neurogym as ngym
 
+# Fontsize appropriate for plots
+SMALL_SIZE = 10
+MEDIUM_SIZE = 12
+BIGGER_SIZE = 14
+
+plt.rc('font', size=MEDIUM_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=MEDIUM_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=MEDIUM_SIZE)     # fontsize of the x and y labels
+plt.rc('xtick', labelsize=SMALL_SIZE)     # fontsize of the tick labels
+plt.rc('ytick', labelsize=SMALL_SIZE)     # fontsize of the tick labels
+plt.rc('legend', fontsize=SMALL_SIZE)     # legend fontsize
+plt.rc('figure', titlesize=MEDIUM_SIZE)   # fontsize of the figure title
+
 # Parameters
 n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 0            # standard deviation of injected noise
 n_in = 3            # number of inputs
-n_out = 6           # number of outputs
+n_out = 48           # number of outputs
 n_trial = 100      # number of example trials to plot
 
 # Tasks
@@ -44,7 +57,7 @@ tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out) for key, value in task.ite
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'Multitask64batch1e3'
+net_file = 'LinCent64batch1e5Noise2nTask48'
 
 net = RNN(n_in,n_neu,n_out,n_sd,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -80,7 +93,7 @@ pca.fit(activity)
 for param in net.parameters():
     param.requires_grad = False
 
-batch_size = 64
+batch_size = 128
 fixedpoints = np.empty([batch_size,1,n_neu])
 
 for j in range(1):
@@ -92,11 +105,11 @@ for j in range(1):
     
     # Initialize hidden activity                                                                    
     hdn = np.zeros((batch_size, n_neu))
-    idx_tr = np.random.choice(n_trial,batch_size,replace=False)
+    idx_tr = np.random.choice(n_trial,batch_size,replace=True)
     idx_t = np.random.choice(ob.shape[0],batch_size)
     for i in range(batch_size):
         hdn[i] = torch.from_numpy(activity_dict[idx_tr[i]][idx_t[i]])
-    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*40+hdn,
+    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*10+hdn,
                       requires_grad=True, dtype=torch.float32)
     
     # Use Adam optimizer
@@ -133,7 +146,7 @@ for i in range(n_trial):
     activity_pc = pca.transform(activity_dict[i])
     trial = trial_info[i]
     color = 'red' if trial['ground_truth'][0] == 0 else 'blue'
-    alpha = .2 if trial['ground_truth'][1] == 0 else 1
+    alpha = .2 if trial['ground_truth'][24] == 0 else 1
     ax.plot3D(activity_pc[:, 0], activity_pc[:, 1], activity_pc[:, 2], 'o-', 
                       color=color, alpha=alpha)
 
@@ -143,9 +156,9 @@ for i in range(fixedpoints.shape[1]):
     fixedpoints_pc = pca.transform(fixedpoints[:,i])
     hdn_pc = pca.transform(hdn)
     ax.plot3D(fixedpoints_pc[:, 0], fixedpoints_pc[:, 1], fixedpoints_pc[:, 2],
-              'x', color=cols[i])
-    ax.plot3D(hdn_pc[:, 0], hdn_pc[:, 1], hdn_pc[:, 2], 'x', color='magenta')
+              'x', color=cols[i],markersize=8,markeredgewidth=3)
+    #ax.plot3D(hdn_pc[:, 0], hdn_pc[:, 1], hdn_pc[:, 2], 'x', color='magenta')
 
-plt.xlabel('PC 1')
-plt.ylabel('PC 2')
-plt.ylabel('PC 3')
+ax.set_xlabel('PC 1')
+ax.set_ylabel('PC 2')
+ax.set_zlabel('PC 3')

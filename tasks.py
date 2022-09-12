@@ -248,10 +248,10 @@ class LinearClassification(ngym.TrialEnv):
             obs: observation
         """
         # Trial info
-        stim = self.rng.rand(2)
+        stim = self.rng.rand(2) - .5
         ground_truth = np.zeros(self.n_task)
         for i, alpha in enumerate(self.alphas):
-            ground_truth[i] = stim[1] > alpha*stim[0] + 0.5*(1-alpha)
+            ground_truth[i] = stim[1] > alpha*stim[0]
         
         trial = {
             'stim': stim,

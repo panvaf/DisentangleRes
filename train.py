@@ -22,12 +22,12 @@ n_task = len(task)
 # Constants
 n_neu = 64         # number of recurrent neurons
 batch_sz = 16       # batch size
-n_batch = 1e3       # number of batches
+n_batch = 1e5       # number of batches
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
 print_every = int(n_batch/100)
-n_out = 6
+n_out = 48
 
 # Environment
 timing = {'fixation': 100,
@@ -41,7 +41,7 @@ n_grace = int(grace/dt); n_decision = int(timing['decision']/dt)
 
 # Save location
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'Lin' + str(n_neu) + \
+net_file = 'LinCent' + str(n_neu) + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
             (('Noise' + str(n_sd)) if n_sd else '') + \
             (('tau' + str(tau)) if tau != 100 else '') + \
@@ -72,7 +72,7 @@ mask[-n_decision:,:] = mask_w
 net = RNN(n_in,n_neu,n_out,n_sd,tau,dt)
 
 # Optimizer
-opt = optim.Adam(net.parameters(), lr=0.01)
+opt = optim.Adam(net.parameters(), lr=0.003)
 
 # Loss
 #criterion = util.CrossEntropyLoss()
