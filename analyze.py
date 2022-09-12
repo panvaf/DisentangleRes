@@ -40,7 +40,7 @@ n_trial = 100      # number of example trials to plot
 
 # Tasks
 task = {'LinearClassification':tasks.LinearClassification}
-task_rules = util.assign_task_rules(task)
+#task_rules = util.assign_task_rules(task)
 n_task = len(task)
 
 # Environment
