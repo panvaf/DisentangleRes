@@ -20,7 +20,7 @@ task = {'LinearClassification':tasks.LinearClassification}
 n_task = len(task)
 
 # Constants
-n_neu = 64         # number of recurrent neurons
+n_neu = 64          # number of recurrent neurons
 batch_sz = 16       # batch size
 n_batch = 1e5       # number of batches
 dt = 100            # step size

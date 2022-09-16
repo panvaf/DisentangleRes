@@ -23,7 +23,7 @@ tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
 n_in = 3            # number of inputs
 n_ff = 100          # number of neurons in feedforward neural net
-n_out = 6           # number of outputs
+n_out = 2           # number of outputs
 batch_sz = 16       # batch size
 n_batch = 1e4       # number of batches for training
 n_test = 100        # number of test batches
@@ -47,7 +47,7 @@ ff_net = nn.Sequential(
         )
 
 # Tasks
-task = {'CircularClassification':tasks.CircularClassification}
+task = {'Denoise':tasks.Denoise}
 #task_rules = util.assign_task_rules(task)
 n_task = len(task)
 
