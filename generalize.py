@@ -14,6 +14,7 @@ import tasks
 import neurogym as ngym
 from random import randint
 import util
+import matplotlib.pyplot as plt
 
 # Parameters
 n_neu = 64          # number of recurrent neurons
@@ -22,9 +23,10 @@ tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
 n_in = 3            # number of inputs
 n_ff = 100          # number of neurons in feedforward neural net
-n_out = 12          # number of outputs
+n_out = 6           # number of outputs
 batch_sz = 16       # batch size
-n_batch = 1e4       # number of batches
+n_batch = 1e4       # number of batches for training
+n_test = 100        # number of test batches
 trial_sz = 88       # drawing multiple trials in a row
 print_every = int(n_batch/100)
 
@@ -45,7 +47,7 @@ ff_net = nn.Sequential(
         )
 
 # Tasks
-task = {'MultiplyClassification':tasks.MultiplyClassification}
+task = {'CircularClassification':tasks.CircularClassification}
 #task_rules = util.assign_task_rules(task)
 n_task = len(task)
 
@@ -110,6 +112,68 @@ for i in range(int(n_batch)):
         print('Loss {:0.3f}'.format(total_loss))
         loss_hist[k] = total_loss
         loss = 0; k += 1
+
+
+# Evaluate
+        
+ff_net.eval()
+
+errors = []
+with torch.no_grad():
+    for i in range(n_test):
+        dataset = datasets[randint(0,n_task-1)]
+        # Generate data for current batch
+        inputs, target = dataset()
+    
+        # Reshape so that batch is first dimension
+        inputs = np.transpose(inputs,(1,0,2))
+        target = np.transpose(target,(1,0,2))
+    
+        # Turn into tensors
+        inputs = torch.from_numpy(inputs).type(torch.float)
+        target = torch.from_numpy(target).type(torch.long)
+        
+        # Forward run
+        _, fr = net(inputs)
+        output = ff_net(fr)
+        
+        a = output.detach().numpy()
+        b = target.detach().numpy()
+        c = b - a
+        
+        errors.append(np.reshape(c[:,[21,43,65,87],:],(-1,n_out)))
+        
+errors = np.reshape(np.asarray(errors),(-1,n_out))
+err = np.abs(errors) > .5
+
+# Plot
+
+# Fontsize appropriate for plots
+SMALL_SIZE = 10
+MEDIUM_SIZE = 12
+BIGGER_SIZE = 14
+
+plt.rc('font', size=MEDIUM_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=MEDIUM_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=MEDIUM_SIZE)     # fontsize of the x and y labels
+plt.rc('xtick', labelsize=SMALL_SIZE)     # fontsize of the tick labels
+plt.rc('ytick', labelsize=SMALL_SIZE)     # fontsize of the tick labels
+plt.rc('legend', fontsize=SMALL_SIZE)     # legend fontsize
+plt.rc('figure', titlesize=MEDIUM_SIZE)   # fontsize of the figure title
+
+# Misclassification distance
+plt.hist(np.sum(err,axis=1))
+plt.xlabel('Misclassification distance')
+plt.ylabel('Count')
+
+# Classification lines
+x = np.linspace(0,.5,100)
+for a in tenvs[0].thres:
+    plt.plot(x,np.sqrt(a**2-x**2))
+plt.ylim([0,.5])
+plt.xlabel('x1')
+plt.ylabel('x2')
+plt.title('Classification lines')
 
 
 '''

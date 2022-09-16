@@ -14,7 +14,7 @@ import util
 import tasks
 import matplotlib.pyplot as plt
 from random import randint
-#import neurogym as ngym
+import neurogym as ngym
 
 # Fontsize appropriate for plots
 SMALL_SIZE = 10
@@ -33,10 +33,12 @@ plt.rc('figure', titlesize=MEDIUM_SIZE)   # fontsize of the figure title
 n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
-n_sd = 0            # standard deviation of injected noise
+n_sd = 2            # standard deviation of injected noise
 n_in = 3            # number of inputs
-n_out = 48           # number of outputs
-n_trial = 100      # number of example trials to plot
+n_out = 48          # number of outputs
+n_trial = 100       # number of bulk example trials to plot
+n_exam = 12         # number of example points to plot with separate colors
+trial_sz = 22
 
 # Tasks
 task = {'LinearClassification':tasks.LinearClassification}
@@ -48,12 +50,7 @@ timing = {'fixation': 100,
           'stimulus': 2000,
           'delay': 0,
           'decision': 100}
-tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out) for key, value in task.items()]
-
-#dataset = ngym.Dataset('PerceptualDecisionMaking-v0',batch_size=16,seq_len=22)
-
-# A sample environment from dataset
-#tenv = dataset.env
+tenvs = [value(timing=timing,sigma=0,n_task=n_out) for key, value in task.items()]
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
@@ -135,9 +132,31 @@ for j in range(1):
     fxdpoints = hidden.detach().numpy()
     fixedpoints[:,j] = fxdpoints
 
-fixedpoints_pc = pca.transform(fixedpoints.reshape(-1,n_neu))
+# Obtain individual simulations to plot and compare location of trajectories
+tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out) for key, value in task.items()]
 
+datasets = [ngym.Dataset(tenv,batch_size=1,seq_len=trial_sz) for tenv in tenvs]
 
+stims = np.zeros((n_exam,n_in-1))
+ex_activ = np.zeros((n_exam,trial_sz,n_neu))
+
+for i in range(n_exam):
+    
+    # Randomly pick task
+    dataset = datasets[randint(0,n_task-1)]
+    # A sample environment from dataset
+    env = dataset.env
+    env.new_trial()
+    
+    ob = env.ob
+    stims[i] = env.trial['stim']
+    
+    inp = torch.from_numpy(ob[np.newaxis, :, :]).type(torch.float)
+    _, rnn_activity = net(inp)
+    rnn_activity = rnn_activity[0, :, :].detach().numpy()
+    ex_activ[i] = rnn_activity
+    
+    
 # Plot network activity and overlay approximate fixed points
 
 fig, ax = plt.subplots(figsize=(6, 6))
@@ -162,3 +181,27 @@ for i in range(fixedpoints.shape[1]):
 ax.set_xlabel('PC 1')
 ax.set_ylabel('PC 2')
 ax.set_zlabel('PC 3')
+plt.show()
+
+# Plot example trials
+fig, ax = plt.subplots(figsize=(6, 6))
+ax = plt.axes(projection='3d')
+for i in range(n_exam):
+    ex_activ_pc = pca.transform(ex_activ[i])
+    ax.plot3D(ex_activ_pc[:, 0], ex_activ_pc[:, 1], ex_activ_pc[:, 2], 'x-', ms=10)
+plt.show()
+
+# Classification lines
+fig, ax = plt.subplots()
+x = np.linspace(-.5,.5,100)
+for alpha in tenvs[0].alphas:
+    ax.plot(x,alpha*x)
+ax.set_ylim([-.5,.5])
+ax.set_xlabel('x1')
+ax.set_ylabel('x2')
+ax.set_title('Classification lines')
+
+# Examples in state space
+for i in range(n_exam):
+    ax.scatter(stims[i,0],stims[i,1],s=50)
+plt.show()
