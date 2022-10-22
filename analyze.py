@@ -15,6 +15,8 @@ import tasks
 import matplotlib.pyplot as plt
 from random import randint
 import neurogym as ngym
+from matplotlib import animation
+import matplotlib as mpl 
 
 # Fontsize appropriate for plots
 SMALL_SIZE = 10
@@ -29,14 +31,23 @@ plt.rc('ytick', labelsize=SMALL_SIZE)     # fontsize of the tick labels
 plt.rc('legend', fontsize=SMALL_SIZE)     # legend fontsize
 plt.rc('figure', titlesize=MEDIUM_SIZE)   # fontsize of the figure title
 
+# Directory for ffmpeg
+
+mpl.rcParams['animation.ffmpeg_path'] = r'D:\Lab Resources\ffmpeg\bin\\ffmpeg.exe'
+
+# Rotating animation
+
+def rotate(angle):
+    ax.view_init(azim=angle)
+
 # Parameters
 n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
-n_sd = 2            # standard deviation of injected noise
+n_sd = 0            # standard deviation of injected noise
 n_in = 3            # number of inputs
 n_out = 48          # number of outputs
-n_trial = 100       # number of bulk example trials to plot
+n_trial = 50        # number of bulk example trials to plot
 n_exam = 12         # number of example points to plot with separate colors
 trial_sz = 22
 
@@ -183,6 +194,11 @@ ax.set_ylabel('PC 2')
 ax.set_zlabel('PC 3')
 plt.show()
 
+rot_animation = animation.FuncAnimation(fig, rotate, frames=np.arange(0,360.5,.5))
+f = r'D:\\Decoupling\\Figures\\rotation.mp4'
+writer = animation.FFMpegWriter(fps=60) 
+rot_animation.save(f, dpi=300, writer=writer)
+
 # Plot example trials
 fig, ax = plt.subplots(figsize=(6, 6))
 ax = plt.axes(projection='3d')
@@ -197,8 +213,8 @@ x = np.linspace(-.5,.5,100)
 for alpha in tenvs[0].alphas:
     ax.plot(x,alpha*x)
 ax.set_ylim([-.5,.5])
-ax.set_xlabel('x1')
-ax.set_ylabel('x2')
+plt.xlabel('True evidence 1')
+plt.ylabel('True evidence 2')
 ax.set_title('Classification lines')
 
 # Examples in state space

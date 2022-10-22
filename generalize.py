@@ -25,7 +25,7 @@ n_in = 3            # number of inputs
 n_ff = 100          # number of neurons in feedforward neural net
 n_out = 2           # number of outputs
 batch_sz = 16       # batch size
-n_batch = 1e4       # number of batches for training
+n_batch = 1e3       # number of batches for training
 n_test = 100        # number of test batches
 trial_sz = 88       # drawing multiple trials in a row
 print_every = int(n_batch/100)
@@ -41,13 +41,13 @@ net.load_state_dict(checkpoint['state_dict'])
 # Feedforward neural network that learns multiplication
 
 ff_net = nn.Sequential(
-        nn.Linear(n_neu,n_ff),
-        nn.Sigmoid(),
-        nn.Linear(n_ff,n_out)
+        nn.Linear(n_neu,n_out)
+        #nn.Sigmoid(),
+        #nn.Linear(n_ff,n_out)
         )
 
 # Tasks
-task = {'Denoise':tasks.Denoise}
+task = {'DenoiseQuads':tasks.DenoiseQuads}
 #task_rules = util.assign_task_rules(task)
 n_task = len(task)
 
@@ -57,7 +57,7 @@ timing = {'fixation': 100,
           'delay': 0,
           'decision': 100}
 
-tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out) for key, value in task.items()]
+tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=np.array([1,2,3])) for key, value in task.items()]
 
 datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz) for tenv in tenvs]
 
@@ -86,7 +86,7 @@ for i in range(int(n_batch)):
     
     # Turn into tensors
     inputs = torch.from_numpy(inputs).type(torch.float)
-    target = torch.from_numpy(target).type(torch.long)
+    target = torch.from_numpy(target).type(torch.float)
     
     # Empty gradient buffers
     opt.zero_grad()
@@ -115,7 +115,13 @@ for i in range(int(n_batch)):
 
 
 # Evaluate
-        
+
+#task = {'Denoise':tasks.Denoise}
+
+tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=np.array([4])) for key, value in task.items()]
+
+datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz) for tenv in tenvs]
+
 ff_net.eval()
 
 errors = []
@@ -124,14 +130,14 @@ with torch.no_grad():
         dataset = datasets[randint(0,n_task-1)]
         # Generate data for current batch
         inputs, target = dataset()
-    
+        
         # Reshape so that batch is first dimension
         inputs = np.transpose(inputs,(1,0,2))
         target = np.transpose(target,(1,0,2))
-    
+        
         # Turn into tensors
         inputs = torch.from_numpy(inputs).type(torch.float)
-        target = torch.from_numpy(target).type(torch.long)
+        target = torch.from_numpy(target).type(torch.float)
         
         # Forward run
         _, fr = net(inputs)
@@ -165,16 +171,35 @@ plt.rc('figure', titlesize=MEDIUM_SIZE)   # fontsize of the figure title
 plt.hist(np.sum(err,axis=1))
 plt.xlabel('Misclassification distance')
 plt.ylabel('Count')
+plt.imshow()
 
 # Classification lines
 x = np.linspace(0,.5,100)
 for a in tenvs[0].thres:
     plt.plot(x,np.sqrt(a**2-x**2))
 plt.ylim([0,.5])
-plt.xlabel('x1')
-plt.ylabel('x2')
+plt.xlabel('True evidence 1')
+plt.ylabel('True evidence 2')
 plt.title('Classification lines')
+plt.imshow()
 
+env = dataset.env
+
+fig,ax = plt.subplots(figsize=(3,.75))
+plt.plot(env.ob[:,1],label='Noisy')
+plt.plot(np.ones(22)*env.trial['stim'][0],label='True')
+    
+plt.ylabel('Evidence 2')
+plt.xlabel('Time')
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_position(('data', -1))
+ax.spines['bottom'].set_position(('data', -.1))
+#plt.legend(prop={'size': SMALL_SIZE},frameon=False,ncol=2,bbox_to_anchor=(.1,1))
+plt.xlim([0,22])
+plt.ylim([0,.7])
+plt.savefig('evidence2.png',bbox_inches='tight',format='png',dpi=300)
+plt.imshow()
 
 '''
 # Synthetic data example
