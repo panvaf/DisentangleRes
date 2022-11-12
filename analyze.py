@@ -52,7 +52,7 @@ n_exam = 12         # number of example points to plot with separate colors
 trial_sz = 22
 
 # Tasks
-task = {'LinearClassification':tasks.LinearClassification}
+task = {'MultiplyClassificationFull':tasks.MultiplyClassificationFull}
 #task_rules = util.assign_task_rules(task)
 n_task = len(task)
 
@@ -65,7 +65,7 @@ tenvs = [value(timing=timing,sigma=0,n_task=n_out) for key, value in task.items(
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinCent64batch1e5Noise2nTask48'
+net_file = 'MultFull64batch1e5Noise2nTask48'
 
 net = RNN(n_in,n_neu,n_out,n_sd,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -194,10 +194,12 @@ ax.set_ylabel('PC 2')
 ax.set_zlabel('PC 3')
 plt.show()
 
+'''
 rot_animation = animation.FuncAnimation(fig, rotate, frames=np.arange(0,360.5,.5))
 f = r'D:\\Decoupling\\Figures\\rotation.mp4'
 writer = animation.FFMpegWriter(fps=60) 
 rot_animation.save(f, dpi=300, writer=writer)
+'''
 
 # Plot example trials
 fig, ax = plt.subplots(figsize=(6, 6))

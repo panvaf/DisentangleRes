@@ -15,19 +15,19 @@ import os
 from pathlib import Path
 
 # Tasks
-task = {'LinearClassification':tasks.LinearClassification}
+task = {'MultiplyClassificationFull':tasks.MultiplyClassificationFull}
 #task_rules = util.assign_task_rules(task)
 n_task = len(task)
 
 # Constants
 n_neu = 64          # number of recurrent neurons
 batch_sz = 16       # batch size
-n_batch = 1e5       # number of batches
+n_batch = 2e4       # number of batches
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
-n_sd = 2            # standard deviation of injected noise
+n_sd = 3            # standard deviation of injected noise
 print_every = int(n_batch/100)
-n_out = 24
+n_out = 48
 
 # Environment
 timing = {'fixation': 100,
@@ -41,11 +41,11 @@ n_grace = int(grace/dt); n_decision = int(timing['decision']/dt)
 
 # Save location
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinCent' + str(n_neu) + \
+net_file = 'MultFull' + str(n_neu) + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
             (('Noise' + str(n_sd)) if n_sd else '') + \
             (('tau' + str(tau)) if tau != 100 else '') + \
-            (('nTask' + str(n_out)) if n_out != 2 else '') + '05space'
+            (('nTask' + str(n_out)) if n_out != 2 else '')
 
 # Make supervised datasets
 tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out) for key, value in task.items()]
