@@ -46,13 +46,13 @@ dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 0            # standard deviation of injected noise
 n_in = 3            # number of inputs
-n_out = 48          # number of outputs
+n_out = 96          # number of outputs
 n_trial = 50        # number of bulk example trials to plot
 n_exam = 12         # number of example points to plot with separate colors
 trial_sz = 22
 
 # Tasks
-task = {'MultiplyClassificationFull':tasks.MultiplyClassificationFull}
+task = {"LinearClassification":tasks.LinearClassification}
 #task_rules = util.assign_task_rules(task)
 n_task = len(task)
 
@@ -65,7 +65,7 @@ tenvs = [value(timing=timing,sigma=0,n_task=n_out) for key, value in task.items(
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'MultFull64batch1e5Noise2nTask48'
+net_file = 'LinMult64batch2e4Noise2nTask48'
 
 net = RNN(n_in,n_neu,n_out,n_sd,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -79,8 +79,7 @@ for i in range(n_trial):
     
     # Pick environment and generate a trial
     tenv = tenvs[randint(0,n_task-1)]
-    tenv.new_trial()
-    ob, gt = tenv.ob, tenv.gt
+    tenv.new_trial(); ob = tenv.ob
     inp = torch.from_numpy(ob[np.newaxis, :, :]).type(torch.float)
     output, rnn_activity = net(inp)
     rnn_activity = rnn_activity[0, :, :].detach().numpy()
@@ -194,12 +193,12 @@ ax.set_ylabel('PC 2')
 ax.set_zlabel('PC 3')
 plt.show()
 
-'''
+
 rot_animation = animation.FuncAnimation(fig, rotate, frames=np.arange(0,360.5,.5))
-f = r'D:\\Decoupling\\Figures\\rotation.mp4'
+f = r'D:\\Decoupling\\Figures\\rotationLinMult.mp4'
 writer = animation.FFMpegWriter(fps=60) 
 rot_animation.save(f, dpi=300, writer=writer)
-'''
+
 
 # Plot example trials
 fig, ax = plt.subplots(figsize=(6, 6))

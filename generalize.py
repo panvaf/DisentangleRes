@@ -22,7 +22,7 @@ dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
 n_in = 3            # number of inputs
-n_ff = 100          # number of neurons in feedforward neural net
+n_ff = 96           # number of neurons in feedforward neural net
 n_out = 2           # number of outputs
 batch_sz = 16       # batch size
 n_batch = 1e3       # number of batches for training
@@ -32,16 +32,16 @@ print_every = int(n_batch/100)
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinCent64batch1e5Noise2nTask48'
+net_file = 'LinMult64batch2e4Noise2nTask48'
 
-net = RNN(n_in,n_neu,48,n_sd,tau,dt)
+net = RNN(n_in,n_neu,96,n_sd,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
 net.load_state_dict(checkpoint['state_dict'])
 
 # Feedforward neural network that learns multiplication
 
 ff_net = nn.Sequential(
-        nn.Linear(n_neu,n_out)
+        nn.Linear(n_ff,n_out)
         #nn.Sigmoid(),
         #nn.Linear(n_ff,n_out)
         )
@@ -92,8 +92,8 @@ for i in range(int(n_batch)):
     opt.zero_grad()
     
     # Forward run
-    _, fr = net(inputs)
-    output = ff_net(fr)
+    net_out, fr = net(inputs)
+    output = ff_net(net_out)
     
     # Compute loss
     loss, _ = util.MSELoss_weighted(output, target, torch.ones_like(target))
@@ -140,8 +140,8 @@ with torch.no_grad():
         target = torch.from_numpy(target).type(torch.float)
         
         # Forward run
-        _, fr = net(inputs)
-        output = ff_net(fr)
+        net_out, fr = net(inputs)
+        output = ff_net(net_out)
         
         a = output.detach().numpy()
         b = target.detach().numpy()

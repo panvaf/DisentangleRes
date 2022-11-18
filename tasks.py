@@ -209,7 +209,7 @@ class LinearClassification(ngym.TrialEnv):
         n_task: number of classification tasks to be solved
     """
 
-    def __init__(self, dt=100, rewards=None, timing=None, sigma=1.0, n_task = 2):
+    def __init__(self, dt=100, rewards=None, timing=None, sigma=1.0, n_task = 2, thres = None):
         super().__init__(dt=dt)
         
         self.sigma = sigma / np.sqrt(self.dt)  # Input noise
@@ -908,31 +908,34 @@ class DenoiseQuadOut(ngym.TrialEnv):
         gt = self.gt_now
 
         return self.ob_now, reward, False, {'new_trial': new_trial, 'gt': gt}
-    
-    
+
+
 # Multiply classification for all 4 quadrants
-    
+
 class MultiplyClassificationFull(ngym.TrialEnv):
     """Two independent streams of evidence are presented for the same stimulus.
     The participant should multiply the amounts of evidence and decide whether
     the result exceeds given thresholds.
     
     For simplicity, the streams are modelled as constant inputs plus noise. 
-
+    
     Inputs:
         sigma: float, input noise level
         n_task: number of classification tasks to be solved
     """
 
-    def __init__(self, dt=100, rewards=None, timing=None, sigma=1.0, n_task = 2):
+    def __init__(self, dt=100, rewards=None, timing=None, sigma=1.0, n_task = 2, thres = None):
         super().__init__(dt=dt)
         
         self.sigma = sigma / np.sqrt(self.dt)  # Input noise
         self.n_task = n_task
         
         # Thresholds for classification
-        dthres = 1/(2*n_task)
-        self.thres = np.linspace(dthres,1,int(n_task/4))*.2
+        if thres is None:
+            dthres = 1/(2*n_task)
+            self.thres = np.linspace(dthres,1,int(n_task/4))*.2
+        else:
+            self.thres = thres
         
         # Rewards
         self.rewards = {'abort': -0.1, 'correct': +1., 'fail': 0.}
