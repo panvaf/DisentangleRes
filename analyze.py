@@ -45,27 +45,29 @@ n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 0            # standard deviation of injected noise
-n_in = 3            # number of inputs
-n_out = 96          # number of outputs
+n_in = 2            # number of inputs
+n_out = 48          # number of outputs
 n_trial = 50        # number of bulk example trials to plot
 n_exam = 12         # number of example points to plot with separate colors
-trial_sz = 22
 
 # Tasks
-task = {"LinearClassification":tasks.LinearClassification}
+task = {"LinearClassificationBound":tasks.LinearClassificationBound}
 #task_rules = util.assign_task_rules(task)
 n_task = len(task)
 
 # Environment
-timing = {'fixation': 100,
+timing = {'fixation': 0,
           'stimulus': 2000,
           'delay': 0,
-          'decision': 100}
+          'decision': 0}
+
+t_task = int(sum(timing.values())/dt)
+
 tenvs = [value(timing=timing,sigma=0,n_task=n_out) for key, value in task.items()]
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinMult64batch2e4Noise2nTask48'
+net_file = 'LinBound64batch2e3Noise2nTask48'
 
 net = RNN(n_in,n_neu,n_out,n_sd,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -107,7 +109,7 @@ for j in range(1):
     print('Task {} out of {}'.format(j+1,n_task))
 
     # Inputs are zero, so that internal representation is not affected
-    inp = np.tile([1, 0, 0],(batch_size, 1))
+    inp = np.tile([0, 0],(batch_size, 1))
     inp = torch.tensor(inp, dtype=torch.float32)
     
     # Initialize hidden activity                                                                    
@@ -116,7 +118,7 @@ for j in range(1):
     idx_t = np.random.choice(ob.shape[0],batch_size)
     for i in range(batch_size):
         hdn[i] = torch.from_numpy(activity_dict[idx_tr[i]][idx_t[i]])
-    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*10+hdn,
+    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*40+hdn,
                       requires_grad=True, dtype=torch.float32)
     
     # Use Adam optimizer
@@ -145,10 +147,10 @@ for j in range(1):
 # Obtain individual simulations to plot and compare location of trajectories
 tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out) for key, value in task.items()]
 
-datasets = [ngym.Dataset(tenv,batch_size=1,seq_len=trial_sz) for tenv in tenvs]
+datasets = [ngym.Dataset(tenv,batch_size=1,seq_len=t_task) for tenv in tenvs]
 
-stims = np.zeros((n_exam,n_in-1))
-ex_activ = np.zeros((n_exam,trial_sz,n_neu))
+stims = np.zeros((n_exam,2))
+ex_activ = np.zeros((n_exam,t_task,n_neu))
 
 for i in range(n_exam):
     
@@ -174,10 +176,10 @@ ax = plt.axes(projection='3d')
 for i in range(n_trial):
     activity_pc = pca.transform(activity_dict[i])
     trial = trial_info[i]
-    color = 'red' if trial['ground_truth'][0] == 0 else 'blue'
-    alpha = .2 if trial['ground_truth'][24] == 0 else 1
+    #color = 'red' if trial['ground_truth'][0] == 0 else 'blue'
+    #alpha = .2 if trial['ground_truth'][48] == 0 else 1
     ax.plot3D(activity_pc[:, 0], activity_pc[:, 1], activity_pc[:, 2], 'o-', 
-                      color=color, alpha=alpha)
+                      color='blue', alpha=.2)
 
 # Fixed points are shown in cross
 cols = ['green','yellow']
@@ -193,12 +195,12 @@ ax.set_ylabel('PC 2')
 ax.set_zlabel('PC 3')
 plt.show()
 
-
+'''
 rot_animation = animation.FuncAnimation(fig, rotate, frames=np.arange(0,360.5,.5))
 f = r'D:\\Decoupling\\Figures\\rotationLinMult.mp4'
 writer = animation.FFMpegWriter(fps=60) 
 rot_animation.save(f, dpi=300, writer=writer)
-
+'''
 
 # Plot example trials
 fig, ax = plt.subplots(figsize=(6, 6))

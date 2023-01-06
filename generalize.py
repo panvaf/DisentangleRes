@@ -21,8 +21,8 @@ n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
-n_in = 3            # number of inputs
-n_ff = 96           # number of neurons in feedforward neural net
+n_in = 2            # number of inputs
+n_ff = 64           # number of neurons in feedforward neural net
 n_out = 2           # number of outputs
 batch_sz = 16       # batch size
 n_batch = 1e3       # number of batches for training
@@ -32,9 +32,9 @@ print_every = int(n_batch/100)
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinMult64batch2e4Noise2nTask48'
+net_file = 'LinBound64batch2e3Noise2nTask48'
 
-net = RNN(n_in,n_neu,96,n_sd,tau,dt)
+net = RNN(n_in,n_neu,48,n_sd,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
 net.load_state_dict(checkpoint['state_dict'])
 
@@ -52,12 +52,12 @@ task = {'DenoiseQuads':tasks.DenoiseQuads}
 n_task = len(task)
 
 # Environment
-timing = {'fixation': 100,
+timing = {'fixation': 0,
           'stimulus': 2000,
           'delay': 0,
-          'decision': 100}
+          'decision': 0}
 
-tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=np.array([1,2,3])) for key, value in task.items()]
+tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=np.array([1,2,3,4])) for key, value in task.items()]
 
 datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz) for tenv in tenvs]
 
@@ -81,7 +81,7 @@ for i in range(int(n_batch)):
     inputs, target = dataset()
     
     # Reshape so that batch is first dimension
-    inputs = np.transpose(inputs,(1,0,2))
+    inputs = np.transpose(inputs,(1,0,2))[:,:,0:2]
     target = np.transpose(target,(1,0,2))
     
     # Turn into tensors
@@ -93,7 +93,7 @@ for i in range(int(n_batch)):
     
     # Forward run
     net_out, fr = net(inputs)
-    output = ff_net(net_out)
+    output = ff_net(fr)
     
     # Compute loss
     loss, _ = util.MSELoss_weighted(output, target, torch.ones_like(target))
@@ -132,7 +132,7 @@ with torch.no_grad():
         inputs, target = dataset()
         
         # Reshape so that batch is first dimension
-        inputs = np.transpose(inputs,(1,0,2))
+        inputs = np.transpose(inputs,(1,0,2))[:,:,0:2]
         target = np.transpose(target,(1,0,2))
         
         # Turn into tensors
@@ -141,7 +141,7 @@ with torch.no_grad():
         
         # Forward run
         net_out, fr = net(inputs)
-        output = ff_net(net_out)
+        output = ff_net(fr)
         
         a = output.detach().numpy()
         b = target.detach().numpy()

@@ -15,14 +15,14 @@ import os
 from pathlib import Path
 
 # Tasks
-task = {"LinearClassification":tasks.LinearClassification, "MultiplyClassificationFull":tasks.MultiplyClassificationFull}
+task = {"LinearClassificationBound":tasks.LinearClassificationBound}
 #task_rules = util.assign_task_rules(task)
 n_task = len(task)
 
 # Constants
 n_neu = 64          # number of recurrent neurons
 batch_sz = 16       # batch size
-n_batch = 2e4       # number of batches
+n_batch = 2e3       # number of batches
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
@@ -32,10 +32,10 @@ n_out = 48          # number of outputs per task
 bal_err = False     # whether to balance penalization of decision vs. integration
 
 # Environment
-timing = {'fixation': 100,
+timing = {'fixation': 0,
           'stimulus': 2000,
           'delay': 0,
-          'decision': 100}
+          'decision': 0}
 grace = 200
 #thres = np.array([0.005, 0.02, 0.04, 0.07, 0.11, 0.15])\
 thres = np.array([0.005, 0.01, 0.018, 0.027, 0.04, 0.052, 0.07, 0.085, 0.105, 0.125, 0.15, 0.18])
@@ -45,15 +45,15 @@ n_grace = int(grace/dt); n_decision = int(timing['decision']/dt); n_trial = int(
 
 # Save location
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinMult' + str(n_neu) + \
+net_file = 'LinBound' + str(n_neu) + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
             (('Noise' + str(n_sd)) if n_sd else '') + \
             (('tau' + str(tau)) if tau != 100 else '') + \
             (('nTask' + str(n_out)) if n_out != 2 else '')  + \
             ('BalErr' if bal_err else '')
-            
+     
 # Make supervised datasets
-tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out,thres=thres) for key, value in task.items()]
+tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out) for key, value in task.items()]
 #tenvs = ['PerceptualDecisionMaking-v0']
 #kwargs = {'dt': 100, 'sigma': 1}
 
@@ -75,7 +75,7 @@ if bal_err:
     mask[:,-n_decision:] = mask_w; mask = np.tile(mask,(1,4,n_out))
 else:
     mask = np.ones((batch_sz,trial_sz,n_out))
-
+    
 # Initialize RNN  
 net = RNN(n_in,n_neu,n_out*n_task,n_sd,tau,dt)
 
