@@ -53,7 +53,7 @@ net_file = 'LinBound' + str(n_neu) + \
             ('BalErr' if bal_err else '')
      
 # Make supervised datasets
-tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out) for key, value in task.items()]
+tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out, thres=thres) for key, value in task.items()]
 #tenvs = ['PerceptualDecisionMaking-v0']
 #kwargs = {'dt': 100, 'sigma': 1}
 

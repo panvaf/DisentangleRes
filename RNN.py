@@ -1,5 +1,5 @@
 """
-Recurrent neural network
+Vanilla RNN class.
 """
 
 import torch

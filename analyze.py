@@ -17,6 +17,9 @@ from random import randint
 import neurogym as ngym
 from matplotlib import animation
 import matplotlib as mpl 
+from matplotlib.ticker import MultipleLocator
+import plotly.graph_objects as go
+import matplotlib.colors as mcol
 
 # Fontsize appropriate for plots
 SMALL_SIZE = 10
@@ -47,7 +50,7 @@ tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 0            # standard deviation of injected noise
 n_in = 2            # number of inputs
 n_out = 48          # number of outputs
-n_trial = 50        # number of bulk example trials to plot
+n_trial = 20        # number of bulk example trials to plot
 n_exam = 12         # number of example points to plot with separate colors
 
 # Tasks
@@ -102,7 +105,7 @@ pca.fit(activity)
 for param in net.parameters():
     param.requires_grad = False
 
-batch_size = 128
+batch_size = 64
 fixedpoints = np.empty([batch_size,1,n_neu])
 
 for j in range(1):
@@ -170,34 +173,60 @@ for i in range(n_exam):
     
     
 # Plot network activity and overlay approximate fixed points
+fig = go.Figure(data=[])
 
-fig, ax = plt.subplots(figsize=(6, 6))
-ax = plt.axes(projection='3d')
 for i in range(n_trial):
     activity_pc = pca.transform(activity_dict[i])
     trial = trial_info[i]
-    #color = 'red' if trial['ground_truth'][0] == 0 else 'blue'
-    #alpha = .2 if trial['ground_truth'][48] == 0 else 1
-    ax.plot3D(activity_pc[:, 0], activity_pc[:, 1], activity_pc[:, 2], 'o-', 
-                      color='blue', alpha=.2)
+    alpha = .4 if trial['ground_truth'][-1,0] > 0 else 1
+    marker = 'circle' if trial['ground_truth'][-1,24] > 0 else 'diamond'
+    fig.add_traces(go.Scatter3d(x=activity_pc[:, 0],y=activity_pc[:, 1],
+               z=activity_pc[:, 2],marker=dict(size=4,color=np.arange(t_task),
+               colorscale='Bluered',opacity=alpha,symbol=marker),
+               line=dict(color='darkblue',width=2)))
 
 # Fixed points are shown in cross
 cols = ['green','yellow']
 for i in range(fixedpoints.shape[1]):
     fixedpoints_pc = pca.transform(fixedpoints[:,i])
     hdn_pc = pca.transform(hdn)
-    ax.plot3D(fixedpoints_pc[:, 0], fixedpoints_pc[:, 1], fixedpoints_pc[:, 2],
-              'x', color=cols[i],markersize=8,markeredgewidth=3)
+    fig.add_traces(go.Scatter3d(x=fixedpoints_pc[:, 0],y=fixedpoints_pc[:, 1],
+              z=fixedpoints_pc[:, 2],marker=dict(size=3,color='green',symbol='x'),
+              mode='markers'))
     #ax.plot3D(hdn_pc[:, 0], hdn_pc[:, 1], hdn_pc[:, 2], 'x', color='magenta')
 
-ax.set_xlabel('PC 1')
-ax.set_ylabel('PC 2')
-ax.set_zlabel('PC 3')
-plt.show()
+
+fig.update_layout(
+    showlegend=False,
+    width=800,
+    height=700,
+    autosize=False,
+    scene=dict(
+        xaxis_title='PC 1',
+        yaxis_title='PC 2',
+        zaxis_title='PC 3',
+        camera=dict(
+            up=dict(
+                x=0,
+                y=0,
+                z=1
+            ),
+            eye=dict(
+                x=0,
+                y=1.0707,
+                z=1,
+            )
+        ),
+        aspectratio = dict( x=1, y=1, z=0.7 ),
+        aspectmode = 'manual'
+    )
+)
+
+fig.show()
 
 '''
 rot_animation = animation.FuncAnimation(fig, rotate, frames=np.arange(0,360.5,.5))
-f = r'D:\\Decoupling\\Figures\\rotationLinMult.mp4'
+f = r'D:\\Decoupling\\Figures\\rotationLinBound.mp4'
 writer = animation.FFMpegWriter(fps=60) 
 rot_animation.save(f, dpi=300, writer=writer)
 '''
@@ -211,16 +240,62 @@ for i in range(n_exam):
 plt.show()
 
 # Classification lines
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(2,2))
 x = np.linspace(-.5,.5,100)
 for alpha in tenvs[0].alphas:
     ax.plot(x,alpha*x)
+ax.set_xlim([-.5,.5])
 ax.set_ylim([-.5,.5])
-plt.xlabel('True evidence 1')
-plt.ylabel('True evidence 2')
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
 ax.set_title('Classification lines')
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_position(('data', -.55))
+ax.spines['bottom'].set_position(('data', -.55))
+ax.xaxis.set_major_locator(MultipleLocator(.5))
+ax.yaxis.set_major_locator(MultipleLocator(.5))
+#plt.savefig('classification_lines.png',bbox_inches='tight',format='png',dpi=300)
+#plt.savefig('classification_lines.eps',bbox_inches='tight',format='eps',dpi=300)
 
 # Examples in state space
 for i in range(n_exam):
     ax.scatter(stims[i,0],stims[i,1],s=50)
 plt.show()
+
+# Time legend
+
+gradient = np.linspace(0, 1, 256)
+gradient = np.vstack((gradient, gradient))
+cm1 = mcol.LinearSegmentedColormap.from_list("MyCmapName",["b","r"])
+
+fig, ax = plt.subplots(figsize=(1, .4))
+ax.imshow(gradient, aspect='auto', cmap=cm1)
+ax.set_axis_off()
+ax.set_title('Time')
+#plt.savefig('time_bar.png',bbox_inches='tight',format='png',dpi=300)
+plt.show()
+
+# Shape legend
+nx1, nx2 = (6, 6)
+x1 = np.linspace(-.5, .5, nx1)
+x2 = np.linspace(-.5, .5, nx2)
+x1v, x2v = np.meshgrid(x1, x2)
+
+fig, ax = plt.subplots(figsize=(2,2))
+ax.scatter(x1v[0:int(nx1/2),0:int(nx1/2)],x2v[0:int(nx1/2),0:int(nx1/2)],marker='D',c='black',alpha=1)
+ax.scatter(x1v[0:int(nx1/2),int(nx1/2):],x2v[0:int(nx1/2),int(nx1/2):],marker='D',c='black',alpha=.4)
+ax.scatter(x1v[int(nx1/2):,0:int(nx1/2)],x2v[int(nx1/2):,0:int(nx1/2)],marker='o',c='black',alpha=1)
+ax.scatter(x1v[int(nx1/2):,int(nx1/2):],x2v[int(nx1/2):,int(nx1/2):],marker='o',c='black',alpha=.4)
+ax.set_xlim([-.55,.55])
+ax.set_ylim([-.55,.55])
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_position(('data', -.6))
+ax.spines['bottom'].set_position(('data', -.6))
+ax.xaxis.set_major_locator(MultipleLocator(.5))
+ax.yaxis.set_major_locator(MultipleLocator(.5))
+#plt.savefig('shape_dim_legend.png',bbox_inches='tight',format='png',dpi=300)
+fig.show()
