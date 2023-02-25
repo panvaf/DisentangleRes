@@ -33,120 +33,79 @@ n_runs = 10         # number of runs of the model
 print_every = int(n_batch/100)
 out_of_sample = False
 
-# Load network
-data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinCenter64batch2e4Noise2nTask12'
+n_tasks = np.array([2,3,6,12,24,48])
+r_sq = np.zeros(np.size(n_tasks))
 
-net = RNN(n_in,n_neu,12,n_sd,tau,dt)
-checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
-net.load_state_dict(checkpoint['state_dict'])
-
-# Feedforward neural network that learns multiplication
-
-ff_net = nn.Sequential(
-        nn.Linear(n_ff,n_out)
-        #nn.Sigmoid(),
-        #nn.Linear(n_ff,n_out)
-        )
-
-# Train feedforward neural net only
-net.eval()
-for param in net.parameters():
-    param.requires_grad = False
-
-# Tasks
-task = {'DenoiseQuads':tasks.DenoiseQuads}
-#task_rules = util.assign_task_rules(task)
-n_task = len(task)
-
-# Environment
-timing = {'fixation': 100,
-          'stimulus': 2000,
-          'delay': 0,
-          'decision': 100}
-
-errors = []
-quads = np.array([1,2,3,4])
-
-for j in range(n_runs):
+for n, n_task in enumerate(n_tasks):
     
-    print("Run {} of {}".format(j+1,n_runs))
+    print('Network trained on {} tasks'.format(n_task))
     
-    # Choose which quadrants the data come from
-    quad_test = choice(quads)
-    quad_train = np.setdiff1d(quads,quad_test)
+    # Load network
+    data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
+    net_file = 'LinCent64batch2e4Noise2nTask' + str(n_task)
     
-    if not out_of_sample:
-        quad_train = quads
-        quad_test = quads
+    net = RNN(n_in,n_neu,n_task,n_sd,tau,dt)
+    checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
+    net.load_state_dict(checkpoint['state_dict'])
     
-    # Reset parameters of decoder for each run
-    for layer in ff_net.children():
-       if hasattr(layer, 'reset_parameters'):
-           layer.reset_parameters()
+    # Feedforward neural network that learns multiplication
     
-    tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=quad_train) for key, value in task.items()]
+    ff_net = nn.Sequential(
+            nn.Linear(n_ff,n_out)
+            #nn.Sigmoid(),
+            #nn.Linear(n_ff,n_out)
+            )
     
-    datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz) for tenv in tenvs]
+    # Train feedforward neural net only
+    net.eval()
+    for param in net.parameters():
+        param.requires_grad = False
     
-    # Optimizer
-    opt = optim.Adam(ff_net.parameters(), lr=0.003)
+    # Tasks
+    task = {'DenoiseQuads':tasks.DenoiseQuads}
+    #task_rules = util.assign_task_rules(task)
+    n_task = len(task)
     
-    # Train decoder
-    ff_net.train()
-    total_loss = 0; k = 0
-    loss_hist = np.zeros(100)
+    # Environment
+    timing = {'fixation': 100,
+              'stimulus': 2000,
+              'delay': 0,
+              'decision': 100}
     
-    for i in range(int(n_batch)):
-        # Randomly pick task
-        dataset = datasets[randint(0,n_task-1)]
-        # Generate data for current batch
-        inputs, target = dataset()
+    errors = []
+    quads = np.array([1,2,3,4])
+    
+    for j in range(n_runs):
         
-        # Reshape so that batch is first dimension
-        inputs = np.transpose(inputs,(1,0,2))
-        target = np.transpose(target,(1,0,2))
+        print("Run {} of {}".format(j+1,n_runs))
         
-        # Turn into tensors
-        inputs = torch.from_numpy(inputs).type(torch.float)
-        target = torch.from_numpy(target).type(torch.float)
+        # Choose which quadrants the data come from
+        quad_test = choice(quads)
+        quad_train = np.setdiff1d(quads,quad_test)
         
-        # Empty gradient buffers
-        opt.zero_grad()
+        if not out_of_sample:
+            quad_train = quads
+            quad_test = quads
         
-        # Forward run
-        net_out, fr = net(inputs)
-        output = ff_net(fr)
+        # Reset parameters of decoder for each run
+        for layer in ff_net.children():
+           if hasattr(layer, 'reset_parameters'):
+               layer.reset_parameters()
         
-        # Compute loss
-        loss, _ = util.MSELoss_weighted(output, target, torch.ones_like(target))
-        total_loss += loss.item()
+        tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=quad_train) for key, value in task.items()]
         
-        # Backpopagate loss
-        loss.backward()
+        datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz) for tenv in tenvs]
         
-        # Update weights
-        opt.step()
+        # Optimizer
+        opt = optim.Adam(ff_net.parameters(), lr=0.003)
         
-        # Store history of average training loss
-        if (i % print_every == 0):
-            total_loss /= print_every
-            print('{} % of the simulation complete'.format(round(i/n_batch*100)))
-            print('Loss {:0.3f}'.format(total_loss))
-            loss_hist[k] = total_loss
-            loss = 0; k += 1
-    
-    
-    # Evaluate
-    
-    tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=quad_test) for key, value in task.items()]
-    
-    datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz) for tenv in tenvs]
-    
-    ff_net.eval()
-    
-    with torch.no_grad():
-        for i in range(n_test):
+        # Train decoder
+        ff_net.train()
+        total_loss = 0; k = 0
+        loss_hist = np.zeros(100)
+        
+        for i in range(int(n_batch)):
+            # Randomly pick task
             dataset = datasets[randint(0,n_task-1)]
             # Generate data for current batch
             inputs, target = dataset()
@@ -159,24 +118,72 @@ for j in range(n_runs):
             inputs = torch.from_numpy(inputs).type(torch.float)
             target = torch.from_numpy(target).type(torch.float)
             
+            # Empty gradient buffers
+            opt.zero_grad()
+            
             # Forward run
             net_out, fr = net(inputs)
             output = ff_net(fr)
             
-            a = output.detach().numpy()
-            b = target.detach().numpy()
-            c = b - a
+            # Compute loss
+            loss, _ = util.MSELoss_weighted(output, target, torch.ones_like(target))
+            total_loss += loss.item()
             
-            errors.append(np.reshape(c[:,[21,43,65,87],:],(-1,n_out)))
+            # Backpopagate loss
+            loss.backward()
             
+            # Update weights
+            opt.step()
+            
+            # Store history of average training loss
+            if (i % print_every == 0):
+                total_loss /= print_every
+                print('{} % of the simulation complete'.format(round(i/n_batch*100)))
+                print('Loss {:0.3f}'.format(total_loss))
+                loss_hist[k] = total_loss
+                loss = 0; k += 1
         
-errors = np.reshape(np.asarray(errors),(-1,n_out))
-err = np.abs(errors) > .5
-
-mse = np.sum(errors**2)/np.size(errors)
-x = np.random.rand(100000) - .5
-var = np.var(x)
-r_sq = 1 - mse/var
+        
+        # Evaluate
+        
+        tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=quad_test) for key, value in task.items()]
+        
+        datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz) for tenv in tenvs]
+        
+        ff_net.eval()
+        
+        with torch.no_grad():
+            for i in range(n_test):
+                dataset = datasets[randint(0,n_task-1)]
+                # Generate data for current batch
+                inputs, target = dataset()
+                
+                # Reshape so that batch is first dimension
+                inputs = np.transpose(inputs,(1,0,2))
+                target = np.transpose(target,(1,0,2))
+                
+                # Turn into tensors
+                inputs = torch.from_numpy(inputs).type(torch.float)
+                target = torch.from_numpy(target).type(torch.float)
+                
+                # Forward run
+                net_out, fr = net(inputs)
+                output = ff_net(fr)
+                
+                a = output.detach().numpy()
+                b = target.detach().numpy()
+                c = b - a
+                
+                errors.append(np.reshape(c[:,[21,43,65,87],:],(-1,n_out)))
+                
+            
+    errors = np.reshape(np.asarray(errors),(-1,n_out))
+    err = np.abs(errors) > .5
+    
+    mse = np.sum(errors**2)/np.size(errors)
+    x = np.random.rand(100000) - .5
+    var = np.var(x)
+    r_sq[n] = 1 - mse/var
 
 # Plot
 
@@ -199,6 +206,25 @@ plt.xlabel('Misclassification distance')
 plt.ylabel('Count')
 plt.show()
 
+# r-squared plot
+fig, ax = plt.subplots(figsize=(2,2))
+ax.scatter(n_tasks,r_sq,label='In-sample')
+#ax.scatter(n_tasks,r_sq_test,label='Out-of-sample')
+ax.set_ylabel('regression \n generalization')
+ax.set_xlabel('# of tasks')
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_position(('data', 1.6))
+ax.spines['bottom'].set_position(('data', .39))
+ax.set_xscale("log")
+ax.set_xticks([2,10,50])
+ax.set_xticklabels([2,10,50])
+#plt.xlim([0,22])
+plt.ylim([0.4,1])
+plt.legend(prop={'size': SMALL_SIZE},frameon=False,ncol=1,bbox_to_anchor=(1,1.2))
+#plt.savefig('r_squared.png',bbox_inches='tight',format='png',dpi=300)
+plt.show()
+
 # Classification lines
 x = np.linspace(0,.5,100)
 for a in tenvs[0].thres:
@@ -214,7 +240,6 @@ env = dataset.env
 fig,ax = plt.subplots(figsize=(3,.75))
 plt.plot(env.ob[:,1],label='Noisy')
 plt.plot(np.ones(22)*env.trial['stim'][0],label='True')
-
 plt.ylabel('Evidence 2')
 plt.xlabel('Time')
 ax.spines['top'].set_visible(False)
@@ -226,80 +251,3 @@ plt.xlim([0,22])
 plt.ylim([0,.7])
 #plt.savefig('evidence2.png',bbox_inches='tight',format='png',dpi=300)
 plt.imshow()
-
-'''
-# Synthetic data example
-
-# Data
-n_train = 100000
-n_test = 100
-
-train_data = np.zeros((n_train,3))
-test_data = np.zeros((n_test,3))
-
-train_data[:,0:2] = np.random.random((n_train,2))
-test_data[:,0:2] = np.random.random((n_test,2))
-
-train_data[:,2] = train_data[:,0] * train_data[:,1]
-test_data[:,2] = test_data[:,0] * test_data[:,1]
-
-# Dataset
-
-class MultDataset(Dataset):
-    def __init__(self, data):
-        self.data = data
-    def __len__(self):
-        return self.data.shape[0]
-    def __getitem__(self, ind):
-        x = self.data[ind][0:2]
-        y = self.data[ind][2]
-        return x, y
-    
-train_set = MultDataset(train_data)
-test_set  = MultDataset(test_data)
-
-batch_size = 16
-train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
-test_loader  = DataLoader(test_set,  batch_size=batch_size, shuffle=False)
-
-# Optimizer
-
-optimizer = optim.Adam(model.parameters())
-criterion = nn.MSELoss()
-
-# Train model
-epochs = 10
-
-model.train()
-
-for epoch in range(epochs):
-    losses = []
-    for batch_num, input_data in enumerate(train_loader):
-        optimizer.zero_grad()
-        x, y = input_data
-        x = x.float()
-        y = y.float()
-
-        output = model(x)
-        loss = criterion(output[:,0], y)
-        loss.backward()
-        losses.append(loss.item())
-
-        optimizer.step()
-
-        if batch_num % 40 == 0:
-            print('\tEpoch %d | Batch %d | Loss %6.2f' % (epoch, batch_num, loss.item()))
-    print('Epoch %d | Loss %6.2f' % (epoch, sum(losses)/len(losses)))
-
-
-model.eval()
-
-test_losses = []
-with torch.no_grad():
-    for x, y in test_loader:
-        x = x.float()
-        y = y.float()
-        
-        output = model(x)
-        test_losses.append((output[:,0] - y).detach().numpy())
-'''
