@@ -15,27 +15,27 @@ import os
 from pathlib import Path
 
 # Tasks
-task = {"LinearClassificationBound":tasks.LinearClassificationBound}
+task = {"LinearClassification":tasks.LinearClassification}
 #task_rules = util.assign_task_rules(task)
 n_task = len(task)
 
 # Constants
 n_neu = 64          # number of recurrent neurons
 batch_sz = 16       # batch size
-n_batch = 2e3       # number of batches
+n_batch = 2e4       # number of batches
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
 n_ff = 100          # size of feedforward layer
 print_every = int(n_batch/100)
-n_out = 48          # number of outputs per task
+n_out = 2          # number of outputs per task
 bal_err = False     # whether to balance penalization of decision vs. integration
 
 # Environment
-timing = {'fixation': 0,
+timing = {'fixation': 100,
           'stimulus': 2000,
           'delay': 0,
-          'decision': 0}
+          'decision': 100}
 grace = 200
 #thres = np.array([0.005, 0.02, 0.04, 0.07, 0.11, 0.15])\
 thres = np.array([0.005, 0.01, 0.018, 0.027, 0.04, 0.052, 0.07, 0.085, 0.105, 0.125, 0.15, 0.18])
@@ -45,11 +45,12 @@ n_grace = int(grace/dt); n_decision = int(timing['decision']/dt); n_trial = int(
 
 # Save location
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinBound' + str(n_neu) + \
+net_file = 'LinCenter' + str(n_neu) + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
             (('Noise' + str(n_sd)) if n_sd else '') + \
             (('tau' + str(tau)) if tau != 100 else '') + \
             (('nTask' + str(n_out)) if n_out != 2 else '')  + \
+            (('Delay' + str(timing['delay'])) if timing['delay'] != 0 else '')  + \
             ('BalErr' if bal_err else '')
      
 # Make supervised datasets

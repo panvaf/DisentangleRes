@@ -20,6 +20,8 @@ import matplotlib as mpl
 from matplotlib.ticker import MultipleLocator
 import plotly.graph_objects as go
 import matplotlib.colors as mcol
+import plotly.io as pio
+pio.renderers.default = "browser"
 
 # Fontsize appropriate for plots
 SMALL_SIZE = 10
@@ -48,21 +50,21 @@ n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 0            # standard deviation of injected noise
-n_in = 2            # number of inputs
+n_in = 3            # number of inputs
 n_out = 48          # number of outputs
-n_trial = 20        # number of bulk example trials to plot
+n_trial = 30        # number of bulk example trials to plot
 n_exam = 12         # number of example points to plot with separate colors
 
 # Tasks
-task = {"LinearClassificationBound":tasks.LinearClassificationBound}
+task = {"LinearClassification":tasks.LinearClassification}
 #task_rules = util.assign_task_rules(task)
 n_task = len(task)
 
 # Environment
-timing = {'fixation': 0,
+timing = {'fixation': 100,
           'stimulus': 2000,
           'delay': 0,
-          'decision': 0}
+          'decision': 100}
 
 t_task = int(sum(timing.values())/dt)
 
@@ -70,9 +72,9 @@ tenvs = [value(timing=timing,sigma=0,n_task=n_out) for key, value in task.items(
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinBound64batch2e3Noise2nTask48'
+net_file = 'LinMult64batch2e4Noise2nTask48'
 
-net = RNN(n_in,n_neu,n_out,n_sd,tau,dt)
+net = RNN(n_in,n_neu,2*n_out,n_sd,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
 net.load_state_dict(checkpoint['state_dict'])
 net.eval()
@@ -112,7 +114,7 @@ for j in range(1):
     print('Task {} out of {}'.format(j+1,n_task))
 
     # Inputs are zero, so that internal representation is not affected
-    inp = np.tile([0, 0],(batch_size, 1))
+    inp = np.tile([1, 0, 0],(batch_size, 1))
     inp = torch.tensor(inp, dtype=torch.float32)
     
     # Initialize hidden activity                                                                    
@@ -121,7 +123,7 @@ for j in range(1):
     idx_t = np.random.choice(ob.shape[0],batch_size)
     for i in range(batch_size):
         hdn[i] = torch.from_numpy(activity_dict[idx_tr[i]][idx_t[i]])
-    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*40+hdn,
+    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*15+hdn,
                       requires_grad=True, dtype=torch.float32)
     
     # Use Adam optimizer
@@ -164,6 +166,7 @@ for i in range(n_exam):
     env.new_trial()
     
     ob = env.ob
+    ob[:,2] = ob[:,1] if np.random.random() > .5 else -ob[:,1]
     stims[i] = env.trial['stim']
     
     inp = torch.from_numpy(ob[np.newaxis, :, :]).type(torch.float)
@@ -173,13 +176,13 @@ for i in range(n_exam):
     
     
 # Plot network activity and overlay approximate fixed points
-fig = go.Figure(data=[])
+fig = go.Figure()
 
 for i in range(n_trial):
     activity_pc = pca.transform(activity_dict[i])
     trial = trial_info[i]
-    alpha = .4 if trial['ground_truth'][-1,0] > 0 else 1
-    marker = 'circle' if trial['ground_truth'][-1,24] > 0 else 'diamond'
+    alpha = .4 if trial['ground_truth'][0] > 0 else 1
+    marker = 'circle' if trial['ground_truth'][int(n_out/2)] > 0 else 'diamond'
     fig.add_traces(go.Scatter3d(x=activity_pc[:, 0],y=activity_pc[:, 1],
                z=activity_pc[:, 2],marker=dict(size=4,color=np.arange(t_task),
                colorscale='Bluered',opacity=alpha,symbol=marker),
@@ -263,6 +266,8 @@ for i in range(n_exam):
     ax.scatter(stims[i,0],stims[i,1],s=50)
 plt.show()
 
+'''
+
 # Time legend
 
 gradient = np.linspace(0, 1, 256)
@@ -299,3 +304,4 @@ ax.xaxis.set_major_locator(MultipleLocator(.5))
 ax.yaxis.set_major_locator(MultipleLocator(.5))
 #plt.savefig('shape_dim_legend.png',bbox_inches='tight',format='png',dpi=300)
 fig.show()
+'''
