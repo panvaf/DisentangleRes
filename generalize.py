@@ -28,13 +28,27 @@ n_out = 2           # number of outputs
 batch_sz = 16       # batch size
 n_batch = 1e3       # number of batches for training
 n_test = 100        # number of test batches
-trial_sz = 88       # drawing multiple trials in a row
+trial_sz = 4        # drawing multiple trials in a row
 n_runs = 10         # number of runs of the model
 print_every = int(n_batch/100)
-out_of_sample = False
+out_of_sample = True
 
-n_tasks = np.array([2,3,6,12,24,48])
+n_tasks = np.array([48])
 r_sq = np.zeros(np.size(n_tasks))
+
+# Tasks
+task = {'DenoiseQuads':tasks.DenoiseQuads}
+#task_rules = util.assign_task_rules(task)
+task_num = len(task)
+
+# Environment
+timing = {'fixation': 100,
+          'stimulus': 2000,
+          'delay': 0,
+          'decision': 100}
+
+t_task = int(sum(timing.values())/dt)
+outputs = np.arange(t_task-1,trial_sz*t_task,t_task)
 
 for n, n_task in enumerate(n_tasks):
     
@@ -42,7 +56,7 @@ for n, n_task in enumerate(n_tasks):
     
     # Load network
     data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-    net_file = 'LinCent64batch2e4Noise2nTask' + str(n_task)
+    net_file = 'LinBound64batch2e3Noise2nTask' + str(n_task)
     
     net = RNN(n_in,n_neu,n_task,n_sd,tau,dt)
     checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -60,17 +74,6 @@ for n, n_task in enumerate(n_tasks):
     net.eval()
     for param in net.parameters():
         param.requires_grad = False
-    
-    # Tasks
-    task = {'DenoiseQuads':tasks.DenoiseQuads}
-    #task_rules = util.assign_task_rules(task)
-    n_task = len(task)
-    
-    # Environment
-    timing = {'fixation': 100,
-              'stimulus': 2000,
-              'delay': 0,
-              'decision': 100}
     
     errors = []
     quads = np.array([1,2,3,4])
@@ -94,7 +97,7 @@ for n, n_task in enumerate(n_tasks):
         
         tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=quad_train) for key, value in task.items()]
         
-        datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz) for tenv in tenvs]
+        datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz*t_task) for tenv in tenvs]
         
         # Optimizer
         opt = optim.Adam(ff_net.parameters(), lr=0.003)
@@ -106,7 +109,7 @@ for n, n_task in enumerate(n_tasks):
         
         for i in range(int(n_batch)):
             # Randomly pick task
-            dataset = datasets[randint(0,n_task-1)]
+            dataset = datasets[randint(0,task_num-1)]
             # Generate data for current batch
             inputs, target = dataset()
             
@@ -143,18 +146,17 @@ for n, n_task in enumerate(n_tasks):
                 loss_hist[k] = total_loss
                 loss = 0; k += 1
         
-        
         # Evaluate
         
         tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=quad_test) for key, value in task.items()]
         
-        datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz) for tenv in tenvs]
+        datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz*t_task) for tenv in tenvs]
         
         ff_net.eval()
         
         with torch.no_grad():
             for i in range(n_test):
-                dataset = datasets[randint(0,n_task-1)]
+                dataset = datasets[randint(0,task_num-1)]
                 # Generate data for current batch
                 inputs, target = dataset()
                 
@@ -174,9 +176,8 @@ for n, n_task in enumerate(n_tasks):
                 b = target.detach().numpy()
                 c = b - a
                 
-                errors.append(np.reshape(c[:,[21,43,65,87],:],(-1,n_out)))
+                errors.append(np.reshape(c[:,outputs,:],(-1,n_out)))
                 
-            
     errors = np.reshape(np.asarray(errors),(-1,n_out))
     err = np.abs(errors) > .5
     
@@ -210,7 +211,7 @@ plt.show()
 fig, ax = plt.subplots(figsize=(2,2))
 ax.scatter(n_tasks,r_sq,label='In-sample')
 #ax.scatter(n_tasks,r_sq_test,label='Out-of-sample')
-ax.set_ylabel('regression \n generalization')
+ax.set_ylabel('$r^2$')
 ax.set_xlabel('# of tasks')
 ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)

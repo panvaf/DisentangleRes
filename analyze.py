@@ -58,7 +58,7 @@ n_exam = 12         # number of example points to plot with separate colors
 # Tasks
 task = {"LinearClassification":tasks.LinearClassification}
 #task_rules = util.assign_task_rules(task)
-n_task = len(task)
+task_num = len(task)
 
 # Environment
 timing = {'fixation': 100,
@@ -72,9 +72,9 @@ tenvs = [value(timing=timing,sigma=0,n_task=n_out) for key, value in task.items(
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinMult64batch2e4Noise2nTask48'
+net_file = 'LinCent64batch2e4Noise2nTask48'
 
-net = RNN(n_in,n_neu,2*n_out,n_sd,tau,dt)
+net = RNN(n_in,n_neu,n_out,n_sd,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
 net.load_state_dict(checkpoint['state_dict'])
 net.eval()
@@ -85,7 +85,7 @@ activity_dict = {}; output_dict = {}; trial_info = {}
 for i in range(n_trial):
     
     # Pick environment and generate a trial
-    tenv = tenvs[randint(0,n_task-1)]
+    tenv = tenvs[randint(0,task_num-1)]
     tenv.new_trial(); ob = tenv.ob
     inp = torch.from_numpy(ob[np.newaxis, :, :]).type(torch.float)
     output, rnn_activity = net(inp)
@@ -111,7 +111,7 @@ batch_size = 64
 fixedpoints = np.empty([batch_size,1,n_neu])
 
 for j in range(1):
-    print('Task {} out of {}'.format(j+1,n_task))
+    print('Task {} out of {}'.format(j+1,task_num))
 
     # Inputs are zero, so that internal representation is not affected
     inp = np.tile([1, 0, 0],(batch_size, 1))
@@ -160,7 +160,7 @@ ex_activ = np.zeros((n_exam,t_task,n_neu))
 for i in range(n_exam):
     
     # Randomly pick task
-    dataset = datasets[randint(0,n_task-1)]
+    dataset = datasets[randint(0,task_num-1)]
     # A sample environment from dataset
     env = dataset.env
     env.new_trial()

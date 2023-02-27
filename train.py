@@ -15,9 +15,9 @@ import os
 from pathlib import Path
 
 # Tasks
-task = {"LinearClassification":tasks.LinearClassification}
+task = {"LinearClassificationCentOut":tasks.LinearClassificationCentOut}
 #task_rules = util.assign_task_rules(task)
-n_task = len(task)
+task_num = len(task)
 
 # Constants
 n_neu = 64          # number of recurrent neurons
@@ -28,14 +28,14 @@ tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
 n_ff = 100          # size of feedforward layer
 print_every = int(n_batch/100)
-n_out = 2          # number of outputs per task
+n_out = 48          # number of outputs per task
 bal_err = False     # whether to balance penalization of decision vs. integration
 
 # Environment
 timing = {'fixation': 100,
           'stimulus': 2000,
           'delay': 0,
-          'decision': 100}
+          'decision': 400}
 grace = 200
 #thres = np.array([0.005, 0.02, 0.04, 0.07, 0.11, 0.15])\
 thres = np.array([0.005, 0.01, 0.018, 0.027, 0.04, 0.052, 0.07, 0.085, 0.105, 0.125, 0.15, 0.18])
@@ -45,13 +45,13 @@ n_grace = int(grace/dt); n_decision = int(timing['decision']/dt); n_trial = int(
 
 # Save location
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinCent' + str(n_neu) + \
+net_file = 'LinCentOut' + str(n_neu) + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
             (('Noise' + str(n_sd)) if n_sd else '') + \
             (('tau' + str(tau)) if tau != 100 else '') + \
             (('nTask' + str(n_out)) if n_out != 2 else '')  + \
             (('Delay' + str(timing['delay'])) if timing['delay'] != 0 else '')  + \
-            ('BalErr' if bal_err else '')
+            ('BalErr' if bal_err else '') + '400dec'
      
 # Make supervised datasets
 tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out, thres=thres) for key, value in task.items()]
@@ -78,13 +78,13 @@ else:
     mask = np.ones((batch_sz,trial_sz,n_out))
     
 # Initialize RNN  
-net = RNN(n_in,n_neu,n_out*n_task,n_sd,tau,dt)
+net = RNN(n_in,n_neu,n_out*task_num,n_sd,tau,dt)
 
 # Feedforward NN
 ff_net = nn.Sequential(
-        nn.Linear(n_out*n_task,n_out*n_task)
+        nn.Linear(n_out*task_num,n_out*task_num)
         #nn.Sigmoid(),
-        #nn.Linear(n_ff,n_out*n_task)
+        #nn.Linear(n_ff,n_out*task_num)
         )
 
 # Optimizer
@@ -100,7 +100,7 @@ loss_hist = np.zeros(100)
 
 for i in range(int(n_batch)):
     # Randomly pick task
-    task = randint(0,n_task-1)
+    task = randint(0,task_num-1)
     dataset = datasets[task]
     # Generate data for current batch
     inputs, target = dataset()
@@ -110,9 +110,9 @@ for i in range(int(n_batch)):
     target = np.transpose(target,(1,0,2))
     
     # Reshape for multiple tasks
-    masker = np.zeros((batch_sz,trial_sz,n_out*n_task))
+    masker = np.zeros((batch_sz,trial_sz,n_out*task_num))
     masker[:,:,task*n_out:(task+1)*n_out] = mask
-    targets = np.zeros((batch_sz,trial_sz,n_out*n_task))
+    targets = np.zeros((batch_sz,trial_sz,n_out*task_num))
     targets[:,:,task*n_out:(task+1)*n_out] = target
     
     # Turn into tensors
