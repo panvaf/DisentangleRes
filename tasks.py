@@ -1186,7 +1186,8 @@ class LinearClassificationBound(ngym.TrialEnv):
                 elif ground_truth[j,i] < - self.thres:
                     ground_truth[j:,i] = - self.thres
         
-        self.set_groundtruth(ground_truth, period='stimulus')
+        self.set_groundtruth(ground_truth[0:int(self.timing['stimulus']/100),:], period='stimulus')
+        self.set_groundtruth(ground_truth[-int(self.timing['delay']/100):,:], period='delay')
 
         trial = {
             'stim': stim,
