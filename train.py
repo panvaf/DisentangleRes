@@ -15,7 +15,7 @@ import os
 from pathlib import Path
 
 # Tasks
-task = {"LinearClassificationCentOut":tasks.LinearClassificationCentOut}
+task = {"LinearClassification":tasks.LinearClassification}
 #task_rules = util.assign_task_rules(task)
 task_num = len(task)
 
@@ -28,37 +28,40 @@ tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
 n_ff = 100          # size of feedforward layer
 print_every = int(n_batch/100)
-n_out = 48          # number of outputs per task
+n_out = 24          # number of outputs per task
 bal_err = False     # whether to balance penalization of decision vs. integration
+trial_sz = 4        # draw multiple trials in a row
+rand_pen = False    # randomly penalize a certain time point in the trial
+bound = 5           # DDM boundary
 
 # Environment
 timing = {'fixation': 100,
           'stimulus': 2000,
-          'delay': 0,
-          'decision': 400}
+          'delay': 500,
+          'decision': 100}
+t_task = int(sum(timing.values())/dt)
 grace = 200
-#thres = np.array([0.005, 0.02, 0.04, 0.07, 0.11, 0.15])\
-thres = np.array([0.005, 0.01, 0.018, 0.027, 0.04, 0.052, 0.07, 0.085, 0.105, 0.125, 0.15, 0.18])
-#trial_sz = int(sum(timing.values())/dt) 
-trial_sz = 88
+#thres = np.array([0.005, 0.02, 0.04, 0.07, 0.11, 0.15])
+#thres = np.array([0.005, 0.01, 0.018, 0.027, 0.04, 0.052, 0.07, 0.085, 0.105, 0.125, 0.15, 0.18])
+
 n_grace = int(grace/dt); n_decision = int(timing['decision']/dt); n_trial = int(sum(timing.values())/dt)
 
 # Save location
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinCentOut' + str(n_neu) + \
+net_file = 'LinCent' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
             (('Noise' + str(n_sd)) if n_sd else '') + \
             (('tau' + str(tau)) if tau != 100 else '') + \
             (('nTask' + str(n_out)) if n_out != 2 else '')  + \
             (('Delay' + str(timing['delay'])) if timing['delay'] != 0 else '')  + \
-            ('BalErr' if bal_err else '') + '400dec'
+            ('BalErr' if bal_err else '') + ('RandPen' if rand_pen else '')
      
 # Make supervised datasets
-tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out, thres=thres) for key, value in task.items()]
+tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out,thres=bound) for key, value in task.items()]
 #tenvs = ['PerceptualDecisionMaking-v0']
 #kwargs = {'dt': 100, 'sigma': 1}
 
-datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz) for tenv in tenvs]
+datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz*t_task) for tenv in tenvs]
 
 # A sample environment from dataset
 env = datasets[0].env
@@ -75,7 +78,7 @@ if bal_err:
     mask = np.ones((batch_sz,n_trial,1)); mask[:,-n_decision-n_grace:-n_decision] = 0
     mask[:,-n_decision:] = mask_w; mask = np.tile(mask,(1,4,n_out))
 else:
-    mask = np.ones((batch_sz,trial_sz,n_out))
+    mask = np.ones((batch_sz,trial_sz*t_task,n_out))
     
 # Initialize RNN  
 net = RNN(n_in,n_neu,n_out*task_num,n_sd,tau,dt)
@@ -109,10 +112,16 @@ for i in range(int(n_batch)):
     inputs = np.transpose(inputs,(1,0,2))
     target = np.transpose(target,(1,0,2))
     
+    # Construct mask to penalize specific time moment
+    if rand_pen:
+        mask = np.zeros((batch_sz,t_task,n_out))
+        mask[:,np.random.randint(5,t_task),:] = 1
+        mask = np.tile(mask,(1,trial_sz,1))
+    
     # Reshape for multiple tasks
-    masker = np.zeros((batch_sz,trial_sz,n_out*task_num))
+    masker = np.zeros((batch_sz,trial_sz*t_task,n_out*task_num))
     masker[:,:,task*n_out:(task+1)*n_out] = mask
-    targets = np.zeros((batch_sz,trial_sz,n_out*task_num))
+    targets = np.zeros((batch_sz,trial_sz*t_task,n_out*task_num))
     targets[:,:,task*n_out:(task+1)*n_out] = target
     
     # Turn into tensors
