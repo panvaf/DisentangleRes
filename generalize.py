@@ -1,5 +1,5 @@
 """
-Check if network generalizes to other tasks
+Check if network generalizes to other tasks.
 """
 
 import torch
@@ -21,19 +21,19 @@ from random import choice
 n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
-n_sd = 2            # standard deviation of injected noise
-n_in = 3            # number of inputs
+n_sd = 4            # standard deviation of injected noise
+n_in = 2            # number of inputs
 n_ff = 64           # number of neurons in feedforward neural net
 n_out = 2           # number of outputs
 batch_sz = 16       # batch size
-n_batch = 1e3       # number of batches for training
+n_batch = 2e3       # number of batches for training
 n_test = 100        # number of test batches
-trial_sz = 4        # drawing multiple trials in a row
-n_runs = 10         # number of runs of the model
+trial_sz = 4        # draw multiple trials in a row
+n_runs = 1         # number of runs of the model
 print_every = int(n_batch/100)
 out_of_sample = True
 
-n_tasks = np.array([48])
+n_tasks = np.array([2,3,6,12,24,48])
 r_sq = np.zeros(np.size(n_tasks))
 
 # Tasks
@@ -42,10 +42,10 @@ task = {'DenoiseQuads':tasks.DenoiseQuads}
 task_num = len(task)
 
 # Environment
-timing = {'fixation': 100,
+timing = {'fixation': 0,
           'stimulus': 2000,
           'delay': 0,
-          'decision': 100}
+          'decision': 0}
 
 t_task = int(sum(timing.values())/dt)
 outputs = np.arange(t_task-1,trial_sz*t_task,t_task)
@@ -53,10 +53,10 @@ outputs = np.arange(t_task-1,trial_sz*t_task,t_task)
 for n, n_task in enumerate(n_tasks):
     
     print('Network trained on {} tasks'.format(n_task))
-    
+
     # Load network
     data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-    net_file = 'LinBound64batch2e3Noise2nTask' + str(n_task)
+    net_file = 'LinBound64batch2e3Noise2nTask' + str(n_task) + 'RandPen'
     
     net = RNN(n_in,n_neu,n_task,n_sd,tau,dt)
     checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -114,7 +114,7 @@ for n, n_task in enumerate(n_tasks):
             inputs, target = dataset()
             
             # Reshape so that batch is first dimension
-            inputs = np.transpose(inputs,(1,0,2))
+            inputs = np.transpose(inputs,(1,0,2))[:,:,0:n_in]
             target = np.transpose(target,(1,0,2))
             
             # Turn into tensors
@@ -161,7 +161,7 @@ for n, n_task in enumerate(n_tasks):
                 inputs, target = dataset()
                 
                 # Reshape so that batch is first dimension
-                inputs = np.transpose(inputs,(1,0,2))
+                inputs = np.transpose(inputs,(1,0,2))[:,:,0:n_in]
                 target = np.transpose(target,(1,0,2))
                 
                 # Turn into tensors
@@ -209,9 +209,9 @@ plt.show()
 
 # r-squared plot
 fig, ax = plt.subplots(figsize=(2,2))
-ax.scatter(n_tasks,r_sq,label='In-sample')
+ax.scatter(n_tasks,r_sq)
 #ax.scatter(n_tasks,r_sq_test,label='Out-of-sample')
-ax.set_ylabel('$r^2$')
+ax.set_ylabel('Out-of-sample $r^2$')
 ax.set_xlabel('# of tasks')
 ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
@@ -221,9 +221,9 @@ ax.set_xscale("log")
 ax.set_xticks([2,10,50])
 ax.set_xticklabels([2,10,50])
 #plt.xlim([0,22])
-plt.ylim([0.4,1])
+plt.ylim([0.4,1.1])
 plt.legend(prop={'size': SMALL_SIZE},frameon=False,ncol=1,bbox_to_anchor=(1,1.2))
-#plt.savefig('r_squared.png',bbox_inches='tight',format='png',dpi=300)
+plt.savefig('r_squared.png',bbox_inches='tight',format='png',dpi=300)
 plt.show()
 
 # Classification lines

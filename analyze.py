@@ -19,6 +19,7 @@ from matplotlib import animation
 import matplotlib as mpl 
 from matplotlib.ticker import MultipleLocator
 import plotly.graph_objects as go
+from plotly.colors import label_rgb
 import matplotlib.colors as mcol
 import plotly.io as pio
 pio.renderers.default = "browser"
@@ -51,9 +52,9 @@ dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 0            # standard deviation of injected noise
 n_in = 3            # number of inputs
-n_out = 48          # number of outputs
-n_trial = 30        # number of bulk example trials to plot
-n_exam = 12         # number of example points to plot with separate colors
+n_task = 24         # number of tasks
+n_trial = 50        # number of bulk example trials to plot
+n_exam = 10         # number of example points to plot with separate colors
 
 # Tasks
 task = {"LinearClassification":tasks.LinearClassification}
@@ -62,19 +63,19 @@ task_num = len(task)
 
 # Environment
 timing = {'fixation': 100,
-          'stimulus': 2000,
-          'delay': 0,
+          'stimulus': 500,
+          'delay': 500,
           'decision': 100}
 
 t_task = int(sum(timing.values())/dt)
 
-tenvs = [value(timing=timing,sigma=0,n_task=n_out) for key, value in task.items()]
+tenvs = [value(timing=timing,sigma=0,n_task=n_task) for key, value in task.items()]
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinCent64batch2e4Noise2nTask48'
+net_file = 'LinCent64batch2e4Noise2nTask' + str(n_task) + 'Delay500'
 
-net = RNN(n_in,n_neu,n_out,n_sd,tau,dt)
+net = RNN(n_in,n_neu,n_task,n_sd,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
 net.load_state_dict(checkpoint['state_dict'])
 net.eval()
@@ -107,7 +108,7 @@ pca.fit(activity)
 for param in net.parameters():
     param.requires_grad = False
 
-batch_size = 64
+batch_size = 128
 fixedpoints = np.empty([batch_size,1,n_neu])
 
 for j in range(1):
@@ -123,7 +124,7 @@ for j in range(1):
     idx_t = np.random.choice(ob.shape[0],batch_size)
     for i in range(batch_size):
         hdn[i] = torch.from_numpy(activity_dict[idx_tr[i]][idx_t[i]])
-    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*15+hdn,
+    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*35+hdn,
                       requires_grad=True, dtype=torch.float32)
     
     # Use Adam optimizer
@@ -150,7 +151,7 @@ for j in range(1):
     fixedpoints[:,j] = fxdpoints
 
 # Obtain individual simulations to plot and compare location of trajectories
-tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out) for key, value in task.items()]
+tenvs = [value(timing=timing,sigma=n_sd,n_task=n_task) for key, value in task.items()]
 
 datasets = [ngym.Dataset(tenv,batch_size=1,seq_len=t_task) for tenv in tenvs]
 
@@ -166,7 +167,7 @@ for i in range(n_exam):
     env.new_trial()
     
     ob = env.ob
-    ob[:,2] = ob[:,1] if np.random.random() > .5 else -ob[:,1]
+    #ob[:,2] = ob[:,1] if np.random.random() > .5 else -ob[:,1]
     stims[i] = env.trial['stim']
     
     inp = torch.from_numpy(ob[np.newaxis, :, :]).type(torch.float)
@@ -176,16 +177,23 @@ for i in range(n_exam):
     
     
 # Plot network activity and overlay approximate fixed points
+colors = [['cyan','magenta'],['yellow','lime']]
+    
 fig = go.Figure()
 
 for i in range(n_trial):
     activity_pc = pca.transform(activity_dict[i])
     trial = trial_info[i]
-    alpha = .4 if trial['ground_truth'][0] > 0 else 1
-    marker = 'circle' if trial['ground_truth'][int(n_out/2)] > 0 else 'diamond'
+    alpha = 1 
+    marker = 'circle'
+    k = 0 if trial['ground_truth'][0] > 0 else 1
+    l = 0 if trial['ground_truth'][int(n_task/2)] > 0 else 1
     fig.add_traces(go.Scatter3d(x=activity_pc[:, 0],y=activity_pc[:, 1],
                z=activity_pc[:, 2],marker=dict(size=4,color=np.arange(t_task),
                colorscale='Bluered',opacity=alpha,symbol=marker),
+               line=dict(color='darkblue',width=2)))
+    fig.add_traces(go.Scatter3d(x=np.array(activity_pc[-1, 0]),y=np.array(activity_pc[-1, 1]),
+               z=np.array(activity_pc[-1, 2]),marker=dict(size=6,color=colors[k][l],symbol='square'),
                line=dict(color='darkblue',width=2)))
 
 # Fixed points are shown in cross
@@ -199,6 +207,11 @@ for i in range(fixedpoints.shape[1]):
     #ax.plot3D(hdn_pc[:, 0], hdn_pc[:, 1], hdn_pc[:, 2], 'x', color='magenta')
 
 
+# Rotating figure
+x_eye = 0
+y_eye = 1.0707
+z_eye = 1
+
 fig.update_layout(
     showlegend=False,
     width=800,
@@ -209,23 +222,60 @@ fig.update_layout(
         yaxis_title='PC 2',
         zaxis_title='PC 3',
         camera=dict(
+            # Determines 'up' direction
             up=dict(
                 x=0,
                 y=0,
                 z=1
             ),
+            # Determines view angle
             eye=dict(
-                x=0,
-                y=1.0707,
-                z=1,
+                x=x_eye,
+                y=y_eye,
+                z=z_eye,
             )
         ),
         aspectratio = dict( x=1, y=1, z=0.7 ),
         aspectmode = 'manual'
-    )
+    ),
+    updatemenus=[dict(type='buttons',
+             showactive=False,
+             y=1,
+             x=0.8,
+             xanchor='left',
+             yanchor='bottom',
+             pad=dict(t=45, r=10),
+             buttons=[dict(label='Play',
+                            method='animate',
+                            args=[None, dict(frame=dict(duration=5, redraw=True), 
+                                                        transition=dict(duration=0),
+                                                        fromcurrent=True,
+                                                        mode='immediate'
+                                                       )]
+                                       )
+                                 ]
+                         )
+                   ]
 )
 
+fig.update_scenes(xaxis_visible=False, yaxis_visible=False,zaxis_visible=False )
+
+# Create rotating scene
+def rotate_z(x, y, z, theta):
+    w = x+1j*y
+    return np.real(np.exp(1j*theta)*w), np.imag(np.exp(1j*theta)*w), z
+
+frames=[]
+for t in np.arange(0, 6.26, 0.1):
+    xe, ye, ze = rotate_z(x_eye, y_eye, z_eye, -t)
+    frames.append(go.Frame(layout=dict(scene_camera_eye=dict(x=xe, y=ye, z=ze))))
+fig.frames=frames
+
+# Save the animation as an MP4 file
+pio.write_html(fig, '3d_scatterplot_animation.html')
+
 fig.show()
+
 
 '''
 rot_animation = animation.FuncAnimation(fig, rotate, frames=np.arange(0,360.5,.5))
@@ -258,13 +308,44 @@ ax.spines['left'].set_position(('data', -.55))
 ax.spines['bottom'].set_position(('data', -.55))
 ax.xaxis.set_major_locator(MultipleLocator(.5))
 ax.yaxis.set_major_locator(MultipleLocator(.5))
-#plt.savefig('classification_lines.png',bbox_inches='tight',format='png',dpi=300)
-#plt.savefig('classification_lines.eps',bbox_inches='tight',format='eps',dpi=300)
 
 # Examples in state space
-for i in range(n_exam):
-    ax.scatter(stims[i,0],stims[i,1],s=50)
-plt.show()
+#for i in range(n_exam):
+#    ax.scatter(stims[i,0],stims[i,1],s=50,c=colors[i])
+#plt.show()
+
+# ax.scatter(env.trial['stim'][0],env.trial['stim'][1],color='orange')
+
+# Add shades around lines
+# import matplotlib.patches as patches
+# hsp = .15
+# x = [-.5-hsp,.5-hsp,.5+hsp,-.5+hsp]
+# y1 = [-.5,.5,.5,-.5]
+# y2 = [.5,-.5,-.5,.5]
+# ax.add_patch(patches.Polygon(xy=list(zip(x,y1)),fill=True,color='blue',alpha=.2,linewidth=0))
+# ax.add_patch(patches.Polygon(xy=list(zip(x,y2)),fill=True,color='orange',alpha=.2,linewidth=0))
+# 
+# plt.savefig('classification_lines_6.png',bbox_inches='tight',format='png',dpi=300)
+# plt.savefig('classification_lines_6.eps',bbox_inches='tight',format='eps',dpi=300)
+
+# DDM plot
+#fig, ax = plt.subplots(figsize=(3,2))
+#ax.plot(tenvs[0].gt)
+#ax.set_xlim([0,20])
+#ax.set_ylim([-5.2,5.2])
+#ax.set_xlabel('$t$')
+#ax.set_ylabel('$A_a$')
+#ax.set_title('Accumulators')
+#ax.spines['top'].set_visible(False)
+#ax.spines['right'].set_visible(False)
+#ax.spines['left'].set_position(('data', -.55))
+#ax.spines['bottom'].set_position(('data', -5.55))
+#ax.xaxis.set_major_locator(MultipleLocator(5))
+#ax.yaxis.set_major_locator(MultipleLocator(5))
+
+#plt.savefig('accumulators.png',bbox_inches='tight',format='png',dpi=300)
+#plt.savefig('accumulators.eps',bbox_inches='tight',format='eps',dpi=300)
+
 
 '''
 
