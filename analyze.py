@@ -53,7 +53,7 @@ tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 0            # standard deviation of injected noise
 n_in = 3            # number of inputs
 n_task = 24         # number of tasks
-n_trial = 50        # number of bulk example trials to plot
+n_trial = 40        # number of bulk example trials to plot
 n_exam = 10         # number of example points to plot with separate colors
 
 # Tasks
@@ -63,8 +63,8 @@ task_num = len(task)
 
 # Environment
 timing = {'fixation': 100,
-          'stimulus': 500,
-          'delay': 500,
+          'stimulus': 2000,
+          'delay': 0,
           'decision': 100}
 
 t_task = int(sum(timing.values())/dt)
@@ -73,7 +73,7 @@ tenvs = [value(timing=timing,sigma=0,n_task=n_task) for key, value in task.items
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinCent64batch2e4Noise2nTask' + str(n_task) + 'Delay500'
+net_file = 'LinCent64batch1e5Noise2nTask' + str(n_task) + '05space'
 
 net = RNN(n_in,n_neu,n_task,n_sd,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -124,7 +124,7 @@ for j in range(1):
     idx_t = np.random.choice(ob.shape[0],batch_size)
     for i in range(batch_size):
         hdn[i] = torch.from_numpy(activity_dict[idx_tr[i]][idx_t[i]])
-    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*35+hdn,
+    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*15+hdn,
                       requires_grad=True, dtype=torch.float32)
     
     # Use Adam optimizer
@@ -174,11 +174,11 @@ for i in range(n_exam):
     _, rnn_activity = net(inp)
     rnn_activity = rnn_activity[0, :, :].detach().numpy()
     ex_activ[i] = rnn_activity
-    
-    
+
+
 # Plot network activity and overlay approximate fixed points
-colors = [['cyan','magenta'],['yellow','lime']]
-    
+colors = [['limegreen','lightcoral'],['gold','dodgerblue']]
+
 fig = go.Figure()
 
 for i in range(n_trial):
@@ -189,20 +189,20 @@ for i in range(n_trial):
     k = 0 if trial['ground_truth'][0] > 0 else 1
     l = 0 if trial['ground_truth'][int(n_task/2)] > 0 else 1
     fig.add_traces(go.Scatter3d(x=activity_pc[:, 0],y=activity_pc[:, 1],
-               z=activity_pc[:, 2],marker=dict(size=4,color=np.arange(t_task),
-               colorscale='Bluered',opacity=alpha,symbol=marker),
+               z=activity_pc[:, 2],marker=dict(size=3,color=np.arange(t_task),
+               colorscale='blues',opacity=alpha,symbol=marker),
                line=dict(color='darkblue',width=2)))
     fig.add_traces(go.Scatter3d(x=np.array(activity_pc[-1, 0]),y=np.array(activity_pc[-1, 1]),
-               z=np.array(activity_pc[-1, 2]),marker=dict(size=6,color=colors[k][l],symbol='square'),
+               z=np.array(activity_pc[-1, 2]),marker=dict(size=5,color=colors[k][l],symbol='square'),
                line=dict(color='darkblue',width=2)))
 
 # Fixed points are shown in cross
-cols = ['green','yellow']
+cols = ['firebrick','yellow']
 for i in range(fixedpoints.shape[1]):
     fixedpoints_pc = pca.transform(fixedpoints[:,i])
     hdn_pc = pca.transform(hdn)
     fig.add_traces(go.Scatter3d(x=fixedpoints_pc[:, 0],y=fixedpoints_pc[:, 1],
-              z=fixedpoints_pc[:, 2],marker=dict(size=3,color='green',symbol='x'),
+              z=fixedpoints_pc[:, 2],marker=dict(size=2,color=cols[0],symbol='x'),
               mode='markers'))
     #ax.plot3D(hdn_pc[:, 0], hdn_pc[:, 1], hdn_pc[:, 2], 'x', color='magenta')
 
@@ -213,6 +213,7 @@ y_eye = 1.0707
 z_eye = 1
 
 fig.update_layout(
+    title=net_file,
     showlegend=False,
     width=800,
     height=700,
@@ -271,11 +272,10 @@ for t in np.arange(0, 6.26, 0.1):
     frames.append(go.Frame(layout=dict(scene_camera_eye=dict(x=xe, y=ye, z=ze))))
 fig.frames=frames
 
-# Save the animation as an MP4 file
-pio.write_html(fig, '3d_scatterplot_animation.html')
+# Save the animation as an html file
+#pio.write_html(fig, '3d_scatterplot_animation.html')
 
 fig.show()
-
 
 '''
 rot_animation = animation.FuncAnimation(fig, rotate, frames=np.arange(0,360.5,.5))
@@ -347,21 +347,50 @@ ax.yaxis.set_major_locator(MultipleLocator(.5))
 #plt.savefig('accumulators.eps',bbox_inches='tight',format='eps',dpi=300)
 
 
-'''
-
 # Time legend
-
 gradient = np.linspace(0, 1, 256)
 gradient = np.vstack((gradient, gradient))
 cm1 = mcol.LinearSegmentedColormap.from_list("MyCmapName",["b","r"])
 
 fig, ax = plt.subplots(figsize=(1, .4))
-ax.imshow(gradient, aspect='auto', cmap=cm1)
+ax.imshow(gradient, aspect='auto', cmap='Blues')
 ax.set_axis_off()
 ax.set_title('Time')
 #plt.savefig('time_bar.png',bbox_inches='tight',format='png',dpi=300)
 plt.show()
 
+# Quadrant-color mapping
+fig, ax = plt.subplots(figsize=(1,1))
+
+pos = .25
+width = pos/2
+locs = [[(pos,-pos),(pos,pos)],[(-pos,-pos),(-pos,pos)]]
+for k in range(2):
+    for l in range(2):
+        # Create a square with side length 1 and the specified color
+        (x, y) = locs[k][l]
+        square = plt.Rectangle((x-width/2,y-width/2), width, width,
+                               facecolor=colors[k][l], edgecolor=None)
+    
+        # Add the square to the plot
+        ax.add_patch(square)
+        
+ax.set_xlim([-.5,.5])
+ax.set_ylim([-.5,.5])
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_position(('data', -.55))
+ax.spines['bottom'].set_position(('data', -.55))
+ax.xaxis.set_major_locator(MultipleLocator(.5))
+ax.yaxis.set_major_locator(MultipleLocator(.5))
+ax.set_xticklabels([])
+ax.set_yticklabels([])
+#plt.savefig('quad_colors.png',bbox_inches='tight',format='png',dpi=300)
+plt.show()
+
+'''
 # Shape legend
 nx1, nx2 = (6, 6)
 x1 = np.linspace(-.5, .5, nx1)
