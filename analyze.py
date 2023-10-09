@@ -52,12 +52,13 @@ dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 0            # standard deviation of injected noise
 n_in = 3            # number of inputs
-n_task = 24         # number of tasks
+n_task = 48         # number of tasks
 n_trial = 40        # number of bulk example trials to plot
 n_exam = 10         # number of example points to plot with separate colors
+thres = 5           # DDM boundary
 
 # Tasks
-task = {"LinearClassification":tasks.LinearClassification}
+task = {"MultiplyClassificationFull":tasks.MultiplyClassificationFull}
 #task_rules = util.assign_task_rules(task)
 task_num = len(task)
 
@@ -69,11 +70,12 @@ timing = {'fixation': 100,
 
 t_task = int(sum(timing.values())/dt)
 
-tenvs = [value(timing=timing,sigma=0,n_task=n_task) for key, value in task.items()]
+thres = np.array([0.005, 0.01, 0.018, 0.027, 0.04, 0.052, 0.07, 0.085, 0.105, 0.125, 0.15, 0.18])
+tenvs = [value(timing=timing,sigma=n_sd,n_task=n_task,thres=thres) for key, value in task.items()]
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinCent64batch1e5Noise2nTask' + str(n_task) + '05space'
+net_file = 'MultFull64batch2e4Noise1nTask' + str(n_task)
 
 net = RNN(n_in,n_neu,n_task,n_sd,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -88,7 +90,7 @@ for i in range(n_trial):
     # Pick environment and generate a trial
     tenv = tenvs[randint(0,task_num-1)]
     tenv.new_trial(); ob = tenv.ob
-    inp = torch.from_numpy(ob[np.newaxis, :, :]).type(torch.float)
+    inp = torch.from_numpy(ob[np.newaxis, :, :]).type(torch.float)[:,:,-n_in:]
     output, rnn_activity = net(inp)
     rnn_activity = rnn_activity[0, :, :].detach().numpy()
     output = output[0, :, :].detach().numpy()
@@ -99,8 +101,18 @@ for i in range(n_trial):
 activity = np.concatenate(list(activity_dict[i] for i in range(n_trial)), axis=0)
 
 # Perform PCA
-pca = PCA(n_components=3)
+pca = PCA(n_components=10)
 pca.fit(activity)
+
+# Access the explained variance ratio
+explained_variance_ratio = pca.explained_variance_ratio_
+
+plt.figure(figsize=(3, 3))
+plt.plot(np.arange(1,10+1),100*explained_variance_ratio[:10])
+plt.xlabel('Components')
+plt.ylabel('Explained variance %')
+plt.title('PCA')
+plt.show()
 
 # Find approximate fixed points, depending on network initial conditions
 
@@ -115,7 +127,7 @@ for j in range(1):
     print('Task {} out of {}'.format(j+1,task_num))
 
     # Inputs are zero, so that internal representation is not affected
-    inp = np.tile([1, 0, 0],(batch_size, 1))
+    inp = np.tile([1, 0, 0],(batch_size, 1)) if n_in == 3 else np.tile([0, 0],(batch_size, 1))
     inp = torch.tensor(inp, dtype=torch.float32)
     
     # Initialize hidden activity                                                                    
@@ -170,30 +182,49 @@ for i in range(n_exam):
     #ob[:,2] = ob[:,1] if np.random.random() > .5 else -ob[:,1]
     stims[i] = env.trial['stim']
     
-    inp = torch.from_numpy(ob[np.newaxis, :, :]).type(torch.float)
+    inp = torch.from_numpy(ob[np.newaxis, :, :]).type(torch.float)[:,:,-n_in:]
     _, rnn_activity = net(inp)
     rnn_activity = rnn_activity[0, :, :].detach().numpy()
     ex_activ[i] = rnn_activity
 
 
 # Plot network activity and overlay approximate fixed points
-colors = [['limegreen','lightcoral'],['gold','dodgerblue']]
+colors = [['gold','limegreen'],['dodgerblue','lightcoral']]
 
 fig = go.Figure()
 
 for i in range(n_trial):
     activity_pc = pca.transform(activity_dict[i])
     trial = trial_info[i]
-    alpha = 1 
     marker = 'circle'
-    k = 0 if trial['ground_truth'][0] > 0 else 1
-    l = 0 if trial['ground_truth'][int(n_task/2)] > 0 else 1
+    
+    if list(task.keys())[0] == 'MultiplyClassificationFull':
+        if trial['ground_truth'][0] > 0:
+            quad_col = colors[1][1] # quadrant 1
+        elif trial['ground_truth'][int(n_task/4)] > 0:
+            quad_col = colors[1][0] # quadrant 2
+        elif trial['ground_truth'][int(n_task/2)] > 0:
+            quad_col = colors[0][0] # quadrant 3
+        elif trial['ground_truth'][-int(n_task/4)] > 0:
+            quad_col = colors[0][1] # quadrant 4
+        else:
+            quad_col = None
+    else:
+        if n_in==3:
+            k = 1 if trial['ground_truth'][0] > 0 else 0
+            l = 1 if trial['ground_truth'][int(n_task/2)] > 0 else 0
+        else:
+            k = 1 if trial['ground_truth'][-1][0] > 0 else 0
+            l = 1 if trial['ground_truth'][-1][int(n_task/2)] > 0 else 0
+        quad_col = colors[k][l]
+
     fig.add_traces(go.Scatter3d(x=activity_pc[:, 0],y=activity_pc[:, 1],
                z=activity_pc[:, 2],marker=dict(size=3,color=np.arange(t_task),
-               colorscale='blues',opacity=alpha,symbol=marker),
+               colorscale='blues',symbol=marker),
                line=dict(color='darkblue',width=2)))
-    fig.add_traces(go.Scatter3d(x=np.array(activity_pc[-1, 0]),y=np.array(activity_pc[-1, 1]),
-               z=np.array(activity_pc[-1, 2]),marker=dict(size=5,color=colors[k][l],symbol='square'),
+    if quad_col:
+        fig.add_traces(go.Scatter3d(x=np.array(activity_pc[-1, 0]),y=np.array(activity_pc[-1, 1]),
+               z=np.array(activity_pc[-1, 2]),marker=dict(size=5,color=quad_col,symbol='square'),
                line=dict(color='darkblue',width=2)))
 
 # Fixed points are shown in cross
@@ -350,7 +381,6 @@ ax.yaxis.set_major_locator(MultipleLocator(.5))
 # Time legend
 gradient = np.linspace(0, 1, 256)
 gradient = np.vstack((gradient, gradient))
-cm1 = mcol.LinearSegmentedColormap.from_list("MyCmapName",["b","r"])
 
 fig, ax = plt.subplots(figsize=(1, .4))
 ax.imshow(gradient, aspect='auto', cmap='Blues')
@@ -364,7 +394,7 @@ fig, ax = plt.subplots(figsize=(1,1))
 
 pos = .25
 width = pos/2
-locs = [[(pos,-pos),(pos,pos)],[(-pos,-pos),(-pos,pos)]]
+locs = [[(-pos,-pos),(pos,-pos)],[(-pos,pos),(pos,pos)]]
 for k in range(2):
     for l in range(2):
         # Create a square with side length 1 and the specified color

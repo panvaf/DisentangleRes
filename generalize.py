@@ -29,7 +29,7 @@ batch_sz = 16       # batch size
 n_batch = 2e3       # number of batches for training
 n_test = 100        # number of test batches
 trial_sz = 4        # draw multiple trials in a row
-n_runs = 10         # number of runs of the model
+n_runs = 1         # number of runs of the model
 print_every = int(n_batch/100)
 out_of_sample = True
 
@@ -185,6 +185,9 @@ for n, n_task in enumerate(n_tasks):
     x = np.random.rand(100000) - .5
     var = np.var(x)
     r_sq[n] = 1 - mse/var
+    
+    plt.hist(errors,100)
+    plt.show()
 
 # Plot
 
