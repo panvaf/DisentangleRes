@@ -58,7 +58,7 @@ n_exam = 10         # number of example points to plot with separate colors
 thres = 5           # DDM boundary
 
 # Tasks
-task = {"MultiplyClassificationFull":tasks.MultiplyClassificationFull}
+task = {"LinearClassification":tasks.LinearClassification}
 #task_rules = util.assign_task_rules(task)
 task_num = len(task)
 
@@ -70,12 +70,12 @@ timing = {'fixation': 100,
 
 t_task = int(sum(timing.values())/dt)
 
-thres = np.array([0.005, 0.01, 0.018, 0.027, 0.04, 0.052, 0.07, 0.085, 0.105, 0.125, 0.15, 0.18])
+#thres = np.array([0.005, 0.01, 0.018, 0.027, 0.04, 0.052, 0.07, 0.085, 0.105, 0.125, 0.15, 0.18])
 tenvs = [value(timing=timing,sigma=n_sd,n_task=n_task,thres=thres) for key, value in task.items()]
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'MultFull64batch2e4Noise1nTask' + str(n_task)
+net_file = 'LinCent64batch1e5Noise2nTask' + str(n_task)
 
 net = RNN(n_in,n_neu,n_task,n_sd,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -107,11 +107,13 @@ pca.fit(activity)
 # Access the explained variance ratio
 explained_variance_ratio = pca.explained_variance_ratio_
 
-plt.figure(figsize=(3, 3))
-plt.plot(np.arange(1,10+1),100*explained_variance_ratio[:10])
-plt.xlabel('Components')
-plt.ylabel('Explained variance %')
-plt.title('PCA')
+fig, ax = plt.subplots(figsize=(1.5,1.5))
+ax.plot(np.arange(1,10+1),100*explained_variance_ratio[:10])
+ax.set_xlabel('Component #')
+ax.set_ylabel('Variance %')
+ax.set_title('PCA')
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
 plt.show()
 
 # Find approximate fixed points, depending on network initial conditions
@@ -136,7 +138,7 @@ for j in range(1):
     idx_t = np.random.choice(ob.shape[0],batch_size)
     for i in range(batch_size):
         hdn[i] = torch.from_numpy(activity_dict[idx_tr[i]][idx_t[i]])
-    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*15+hdn,
+    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*20+hdn,
                       requires_grad=True, dtype=torch.float32)
     
     # Use Adam optimizer
@@ -191,122 +193,14 @@ for i in range(n_exam):
 # Plot network activity and overlay approximate fixed points
 colors = [['gold','limegreen'],['dodgerblue','lightcoral']]
 
-fig = go.Figure()
+plot_full = util.rot_3D_plot(activity_dict,fixedpoints,pca,n_trial,trial_info,
+                        net_file,colors=colors)
+plot_full.plot()
 
-for i in range(n_trial):
-    activity_pc = pca.transform(activity_dict[i])
-    trial = trial_info[i]
-    marker = 'circle'
-    
-    if list(task.keys())[0] == 'MultiplyClassificationFull':
-        if trial['ground_truth'][0] > 0:
-            quad_col = colors[1][1] # quadrant 1
-        elif trial['ground_truth'][int(n_task/4)] > 0:
-            quad_col = colors[1][0] # quadrant 2
-        elif trial['ground_truth'][int(n_task/2)] > 0:
-            quad_col = colors[0][0] # quadrant 3
-        elif trial['ground_truth'][-int(n_task/4)] > 0:
-            quad_col = colors[0][1] # quadrant 4
-        else:
-            quad_col = None
-    else:
-        if n_in==3:
-            k = 1 if trial['ground_truth'][0] > 0 else 0
-            l = 1 if trial['ground_truth'][int(n_task/2)] > 0 else 0
-        else:
-            k = 1 if trial['ground_truth'][-1][0] > 0 else 0
-            l = 1 if trial['ground_truth'][-1][int(n_task/2)] > 0 else 0
-        quad_col = colors[k][l]
-
-    fig.add_traces(go.Scatter3d(x=activity_pc[:, 0],y=activity_pc[:, 1],
-               z=activity_pc[:, 2],marker=dict(size=3,color=np.arange(t_task),
-               colorscale='blues',symbol=marker),
-               line=dict(color='darkblue',width=2)))
-    if quad_col:
-        fig.add_traces(go.Scatter3d(x=np.array(activity_pc[-1, 0]),y=np.array(activity_pc[-1, 1]),
-               z=np.array(activity_pc[-1, 2]),marker=dict(size=5,color=quad_col,symbol='square'),
-               line=dict(color='darkblue',width=2)))
-
-# Fixed points are shown in cross
-cols = ['firebrick','yellow']
-for i in range(fixedpoints.shape[1]):
-    fixedpoints_pc = pca.transform(fixedpoints[:,i])
-    hdn_pc = pca.transform(hdn)
-    fig.add_traces(go.Scatter3d(x=fixedpoints_pc[:, 0],y=fixedpoints_pc[:, 1],
-              z=fixedpoints_pc[:, 2],marker=dict(size=2,color=cols[0],symbol='x'),
-              mode='markers'))
-    #ax.plot3D(hdn_pc[:, 0], hdn_pc[:, 1], hdn_pc[:, 2], 'x', color='magenta')
-
-
-# Rotating figure
-x_eye = 0
-y_eye = 1.0707
-z_eye = 1
-
-fig.update_layout(
-    title=net_file,
-    showlegend=False,
-    width=800,
-    height=700,
-    autosize=False,
-    scene=dict(
-        xaxis_title='PC 1',
-        yaxis_title='PC 2',
-        zaxis_title='PC 3',
-        camera=dict(
-            # Determines 'up' direction
-            up=dict(
-                x=0,
-                y=0,
-                z=1
-            ),
-            # Determines view angle
-            eye=dict(
-                x=x_eye,
-                y=y_eye,
-                z=z_eye,
-            )
-        ),
-        aspectratio = dict( x=1, y=1, z=0.7 ),
-        aspectmode = 'manual'
-    ),
-    updatemenus=[dict(type='buttons',
-             showactive=False,
-             y=1,
-             x=0.8,
-             xanchor='left',
-             yanchor='bottom',
-             pad=dict(t=45, r=10),
-             buttons=[dict(label='Play',
-                            method='animate',
-                            args=[None, dict(frame=dict(duration=5, redraw=True), 
-                                                        transition=dict(duration=0),
-                                                        fromcurrent=True,
-                                                        mode='immediate'
-                                                       )]
-                                       )
-                                 ]
-                         )
-                   ]
-)
-
-fig.update_scenes(xaxis_visible=False, yaxis_visible=False,zaxis_visible=False )
-
-# Create rotating scene
-def rotate_z(x, y, z, theta):
-    w = x+1j*y
-    return np.real(np.exp(1j*theta)*w), np.imag(np.exp(1j*theta)*w), z
-
-frames=[]
-for t in np.arange(0, 6.26, 0.1):
-    xe, ye, ze = rotate_z(x_eye, y_eye, z_eye, -t)
-    frames.append(go.Frame(layout=dict(scene_camera_eye=dict(x=xe, y=ye, z=ze))))
-fig.frames=frames
 
 # Save the animation as an html file
 #pio.write_html(fig, '3d_scatterplot_animation.html')
 
-fig.show()
 
 '''
 rot_animation = animation.FuncAnimation(fig, rotate, frames=np.arange(0,360.5,.5))
@@ -364,7 +258,7 @@ ax.yaxis.set_major_locator(MultipleLocator(.5))
 #ax.plot(tenvs[0].gt)
 #ax.set_xlim([0,20])
 #ax.set_ylim([-5.2,5.2])
-#ax.set_xlabel('$t$')
+#ax.set_xlabel('Time')
 #ax.set_ylabel('$A_a$')
 #ax.set_title('Accumulators')
 #ax.spines['top'].set_visible(False)
