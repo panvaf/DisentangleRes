@@ -21,7 +21,7 @@ from random import choice
 n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
-n_sd = 4            # standard deviation of injected noise
+n_sd = 2            # standard deviation of injected noise
 n_in = 3            # number of inputs
 n_ff = 64           # number of neurons in feedforward neural net
 n_out = 2           # number of outputs
@@ -29,7 +29,7 @@ batch_sz = 16       # batch size
 n_batch = 2e3       # number of batches for training
 n_test = 100        # number of test batches
 trial_sz = 4        # draw multiple trials in a row
-n_runs = 1         # number of runs of the model
+n_runs = 10         # number of runs of the model
 print_every = int(n_batch/100)
 out_of_sample = True
 
@@ -53,7 +53,7 @@ outputs = np.arange(t_task-1,trial_sz*t_task,t_task)
 for n, n_task in enumerate(n_tasks):
     
     print('Network trained on {} tasks'.format(n_task))
-
+    
     # Load network
     data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
     net_file = 'LinCent64batch1e5Noise2nTask' + str(n_task)
@@ -129,7 +129,7 @@ for n, n_task in enumerate(n_tasks):
             output = ff_net(fr)
             
             # Compute loss
-            loss, _ = util.MSELoss_weighted(output, target, torch.ones_like(target))
+            loss, _ = util.MSELoss_weighted(output[:,outputs,:], target[:,outputs,:], 1)
             total_loss += loss.item()
             
             # Backpopagate loss
