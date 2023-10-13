@@ -26,13 +26,14 @@ n_ff = 64           # number of neurons in feedforward neural net
 n_out = 2           # number of outputs
 batch_sz = 16       # batch size
 n_batch = 4e3       # number of batches for training
-n_test = 100        # number of test batches
+n_test = 10        # number of test batches
 trial_sz = 4        # draw multiple trials in a row
 n_runs = 1         # number of runs for each quadrant
 print_every = int(n_batch/100)
 out_of_sample = True
+keep_test_loss_hist = True
 
-n_tasks = np.array([2,3,6,12,24,48])
+n_tasks = np.array([48])
 r_sq = np.zeros(np.size(n_tasks))
 
 # Tasks
@@ -48,6 +49,15 @@ timing = {'fixation': 100,
 
 t_task = int(sum(timing.values())/dt)
 outputs = np.arange(t_task-1,trial_sz*t_task,t_task)
+
+# Store losses
+train_loss_hist = np.zeros((np.size(n_tasks),4,n_runs,100))
+if keep_test_loss_hist:
+    test_loss_hist = np.zeros((np.size(n_tasks),4,n_runs,100))
+else:
+    test_loss_hist = np.zeros((np.size(n_tasks),4,n_runs))
+    
+# Begin!
 
 for n, n_task in enumerate(n_tasks):
     
@@ -78,40 +88,43 @@ for n, n_task in enumerate(n_tasks):
     quads = np.array([1,2,3,4])
     
     # Choose a quadrant for test
-    for k, quad_test in enumerate(quads):
+    for q, quad_test in enumerate(quads):
         
         # All the other quadrants for train
         quad_train = np.setdiff1d(quads,quad_test)
         
-        for j in range(n_runs):
+        for run in range(n_runs):
             
             if out_of_sample:
-                print("Run {} of {} for quadrant {}".format(j+1,n_runs,quad_test))
+                print("Run {} of {} for quadrant {}".format(run+1,n_runs,quad_test))
             else:
-                print("Run {} of {}".format(4*k+j+1,n_runs*4))
+                print("Run {} of {}".format(4*q+run+1,n_runs*4))
                 quad_train = quads
                 quad_test = quads
+            
+            # Datasets
+            tenvs_train = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=quad_train) for key, value in task.items()]
+            datasets_train = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz*t_task) for tenv in tenvs_train]
+            
+            tenvs_test = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=quad_test) for key, value in task.items()]
+            datasets_test = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz*t_task) for tenv in tenvs_test]
             
             # Reset parameters of decoder for each run
             for layer in ff_net.children():
                if hasattr(layer, 'reset_parameters'):
                    layer.reset_parameters()
             
-            tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=quad_train) for key, value in task.items()]
-            
-            datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz*t_task) for tenv in tenvs]
-            
+                        
             # Optimizer
             opt = optim.Adam(ff_net.parameters(), lr=0.003)
             
             # Train decoder
             ff_net.train()
-            total_loss = 0; k = 0
-            loss_hist = np.zeros(100)
+            train_loss = 0; t = 0
             
             for i in range(int(n_batch)):
                 # Randomly pick task
-                dataset = datasets[randint(0,task_num-1)]
+                dataset = datasets_train[randint(0,task_num-1)]
                 # Generate data for current batch
                 inputs, target = dataset()
                 
@@ -132,7 +145,7 @@ for n, n_task in enumerate(n_tasks):
                 
                 # Compute loss
                 loss, _ = util.MSELoss_weighted(output[:,outputs,:], target[:,outputs,:], 1)
-                total_loss += loss.item()
+                train_loss += loss.item()
                 
                 # Backpopagate loss
                 loss.backward()
@@ -142,43 +155,64 @@ for n, n_task in enumerate(n_tasks):
                 
                 # Store history of average training loss
                 if (i % print_every == 0):
-                    total_loss /= print_every
+                    train_loss /= print_every
                     print('{} % of the simulation complete'.format(round(i/n_batch*100)))
-                    print('Loss {:0.3f}'.format(total_loss))
-                    loss_hist[k] = total_loss
-                    loss = 0; k += 1
-            
-            # Evaluate
-            
-            tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=quad_test) for key, value in task.items()]
-            
-            datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz*t_task) for tenv in tenvs]
-            
-            ff_net.eval()
-            
-            with torch.no_grad():
-                for i in range(n_test):
-                    dataset = datasets[randint(0,task_num-1)]
-                    # Generate data for current batch
-                    inputs, target = dataset()
+                    print('Train loss {:0.3f}'.format(train_loss))
+                    train_loss_hist[n,q,run,t] = train_loss
                     
-                    # Reshape so that batch is first dimension
-                    inputs = np.transpose(inputs,(1,0,2))[:,:,0:n_in]
-                    target = np.transpose(target,(1,0,2))
-                    
-                    # Turn into tensors
-                    inputs = torch.from_numpy(inputs).type(torch.float)
-                    target = torch.from_numpy(target).type(torch.float)
-                    
-                    # Forward run
-                    net_out, fr = net(inputs)
-                    output = ff_net(fr)
-                    
-                    a = output.detach().numpy()
-                    b = target.detach().numpy()
-                    c = b - a
-                    
-                    errors.append(np.reshape(c[:,outputs,:],(-1,n_out)))
+                    # Keep track of test loss history
+                    if keep_test_loss_hist or round(i/n_batch*100) == 99:
+                        
+                        # Make sure weights are frozen
+                        ff_net.eval()
+                        
+                        with torch.no_grad():
+                            
+                            test_loss = 0
+                            
+                            for _ in range(n_test):
+                                dataset = datasets_test[randint(0,task_num-1)]
+                                # Generate data for current batch
+                                inputs, target = dataset()
+                                
+                                # Reshape so that batch is first dimension
+                                inputs = np.transpose(inputs,(1,0,2))[:,:,0:n_in]
+                                target = np.transpose(target,(1,0,2))
+                                
+                                # Turn into tensors
+                                inputs = torch.from_numpy(inputs).type(torch.float)
+                                target = torch.from_numpy(target).type(torch.float)
+                                
+                                # Forward run
+                                net_out, fr = net(inputs)
+                                output = ff_net(fr)
+                                
+                                # Compute loss
+                                loss, _ = util.MSELoss_weighted(output[:,outputs,:], target[:,outputs,:], 1)
+                                test_loss += loss.item()
+                                
+                        test_loss /= n_test
+                        print('Test loss {:0.3f}'.format(test_loss))
+                                
+                        # Store loss history
+                        if keep_test_loss_hist:
+                            test_loss_hist[n,q,run,t] = test_loss
+                        else:
+                            test_loss_hist[n,q,run] = test_loss
+                        
+                        # Keep final errors
+                        if round(i/n_batch*100) == 99:
+                            a = output.detach().numpy()
+                            b = target.detach().numpy()
+                            c = b - a
+                            
+                            errors.append(np.reshape(c[:,outputs,:],(-1,n_out)))
+                            
+                        test_loss = 0
+                        # Put the network in train mode again
+                        ff_net.train()
+                        
+                    train_loss = 0; t += 1
                 
     errors = np.reshape(np.asarray(errors),(-1,n_out))
     err = np.abs(errors) > .5
@@ -257,4 +291,25 @@ ax.spines['bottom'].set_position(('data', -.1))
 plt.xlim([0,22])
 plt.ylim([0,.7])
 #plt.savefig('evidence2.png',bbox_inches='tight',format='png',dpi=300)
+plt.show()
+
+
+# Plot loss history
+t = np.linspace(0,n_batch,100)
+fig, ax = plt.subplots(figsize=(2,2))
+ax.plot(t,train_loss_hist[0,:,0,:].T,color='blue',alpha = .3)
+ax.plot(t,np.average(train_loss_hist[0,:,0,:],axis=0),color='blue',label='Train')
+if keep_test_loss_hist:
+    ax.plot(t,test_loss_hist[0,:,0,:].T,color='red',alpha = .3)
+    ax.plot(t,np.average(test_loss_hist[0,:,0,:],axis=0),color='red',label='Test')
+ax.set_ylabel('Loss')
+ax.set_xlabel('Batches')
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+#ax.spines['left'].set_position(('data', 1.6))
+#ax.spines['bottom'].set_position(('data', .39))
+#plt.xlim([0,22])
+plt.ylim([0,.1])
+plt.legend(prop={'size': SMALL_SIZE},frameon=False,ncol=1,bbox_to_anchor=(1,1.2))
+#plt.savefig('r_squared.png',bbox_inches='tight',format='png',dpi=300)
 plt.show()
