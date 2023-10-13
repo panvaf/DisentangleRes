@@ -37,7 +37,10 @@ def assign_task_rules(tasks):
 def MSELoss_weighted(output,target,mask):
     loss = torch.sum(mask*(output - target)**2)
     size = torch.numel(target)
-    norm = torch.sum(mask)
+    if isinstance(mask, torch.Tensor):    
+        norm = torch.sum(mask)
+    else:
+        norm = 1
     
     avg_loss = loss/size
     normed_loss = loss/norm
@@ -66,21 +69,19 @@ class rot_3D_plot():
         self.t_task = activity[0].shape[0]
         self.n_task = trial_info[0]['ground_truth'].shape[0]
         
-        self.colors = self.get_colors(colors)
-        
         # Constants
         self.x_eye = 0
         self.y_eye = 1.0707
         self.z_eye = 1
         
+        # Colors
+        self.colors = self.get_colors(colors)
         
     # Get the colors for the final dot in the scatterplot
     def get_colors(self,colors):
         
-        if colors == None:
-            pass
-        
-        else:
+        if isinstance(colors[0],list):
+            self.marker = 'square'; self.mark_sz = 5
             col = []
             
             for i in range(self.n_trial):
@@ -109,8 +110,11 @@ class rot_3D_plot():
                     
                 col.append(quad_col)
             
+        else:
+            col = colors
+            self.marker = 'circle'; self.mark_sz = 7
+            
         return col
-    
     
                 
     # Create plot
@@ -120,14 +124,13 @@ class rot_3D_plot():
 
         for i in range(self.n_trial):
             activity_pc = self.pca.transform(self.activity[i])
-            marker = 'circle'
             
             fig.add_traces(go.Scatter3d(x=activity_pc[:, 0],y=activity_pc[:, 1],
                        z=activity_pc[:, 2],marker=dict(size=3,color=np.arange(self.t_task),
-                       colorscale='blues',symbol=marker),line=dict(color='darkblue',width=2)))
+                       colorscale='blues',symbol='circle'),line=dict(color='darkblue',width=2)))
             if self.colors[i]:
                 fig.add_traces(go.Scatter3d(x=np.array(activity_pc[-1, 0]),y=np.array(activity_pc[-1, 1]),
-                       z=np.array(activity_pc[-1, 2]),marker=dict(size=5,color=self.colors[i],symbol='square'),
+                       z=np.array(activity_pc[-1, 2]),marker=dict(size=self.mark_sz,color=self.colors[i],symbol=self.marker),
                        line=dict(color='darkblue',width=2)))
                 
         # Fixed points are shown in cross
@@ -196,7 +199,7 @@ class rot_3D_plot():
             xe, ye, ze = self.rotate_z(-t)
             frames.append(go.Frame(layout=dict(scene_camera_eye=dict(x=xe, y=ye, z=ze))))
         fig.frames=frames
-
+        
         fig.show()
         
         

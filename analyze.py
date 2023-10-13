@@ -15,14 +15,10 @@ import tasks
 import matplotlib.pyplot as plt
 from random import randint
 import neurogym as ngym
-from matplotlib import animation
 import matplotlib as mpl 
 from matplotlib.ticker import MultipleLocator
-import plotly.graph_objects as go
-from plotly.colors import label_rgb
 import matplotlib.colors as mcol
-import plotly.io as pio
-pio.renderers.default = "browser"
+
 
 # Fontsize appropriate for plots
 SMALL_SIZE = 10
@@ -50,11 +46,11 @@ def rotate(angle):
 n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
-n_sd = 0            # standard deviation of injected noise
+n_sd = 2            # standard deviation of injected noise
 n_in = 3            # number of inputs
 n_task = 48         # number of tasks
 n_trial = 40        # number of bulk example trials to plot
-n_exam = 10         # number of example points to plot with separate colors
+n_exam = 5         # number of example points to plot with separate colors
 thres = 5           # DDM boundary
 
 # Tasks
@@ -71,13 +67,13 @@ timing = {'fixation': 100,
 t_task = int(sum(timing.values())/dt)
 
 #thres = np.array([0.005, 0.01, 0.018, 0.027, 0.04, 0.052, 0.07, 0.085, 0.105, 0.125, 0.15, 0.18])
-tenvs = [value(timing=timing,sigma=n_sd,n_task=n_task,thres=thres) for key, value in task.items()]
+tenvs = [value(timing=timing,sigma=0,n_task=n_task,thres=thres) for key, value in task.items()]
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
 net_file = 'LinCent64batch1e5Noise2nTask' + str(n_task)
 
-net = RNN(n_in,n_neu,n_task,n_sd,tau,dt)
+net = RNN(n_in,n_neu,n_task,0,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
 net.load_state_dict(checkpoint['state_dict'])
 net.eval()
@@ -138,7 +134,7 @@ for j in range(1):
     idx_t = np.random.choice(ob.shape[0],batch_size)
     for i in range(batch_size):
         hdn[i] = torch.from_numpy(activity_dict[idx_tr[i]][idx_t[i]])
-    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*20+hdn,
+    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*15+hdn,
                       requires_grad=True, dtype=torch.float32)
     
     # Use Adam optimizer
@@ -170,7 +166,9 @@ tenvs = [value(timing=timing,sigma=n_sd,n_task=n_task) for key, value in task.it
 datasets = [ngym.Dataset(tenv,batch_size=1,seq_len=t_task) for tenv in tenvs]
 
 stims = np.zeros((n_exam,2))
-ex_activ = np.zeros((n_exam,t_task,n_neu))
+
+# Visualize RNN activity
+ex_activ_dict = {}; ex_trial_info = {}
 
 for i in range(n_exam):
     
@@ -187,7 +185,8 @@ for i in range(n_exam):
     inp = torch.from_numpy(ob[np.newaxis, :, :]).type(torch.float)[:,:,-n_in:]
     _, rnn_activity = net(inp)
     rnn_activity = rnn_activity[0, :, :].detach().numpy()
-    ex_activ[i] = rnn_activity
+    ex_activ_dict[i] = rnn_activity
+    ex_trial_info[i] = env.trial
 
 
 # Plot network activity and overlay approximate fixed points
@@ -198,24 +197,34 @@ plot_full = util.rot_3D_plot(activity_dict,fixedpoints,pca,n_trial,trial_info,
 plot_full.plot()
 
 
-# Save the animation as an html file
-#pio.write_html(fig, '3d_scatterplot_animation.html')
+# Plot examples with noise with distinct colors and their location in state space 
+cols = list(mcol.TABLEAU_COLORS.values())[:n_exam]
+
+plot_ex = util.rot_3D_plot(ex_activ_dict,fixedpoints,pca,n_exam,ex_trial_info,
+                        net_file,colors=cols)
+plot_ex.plot()
 
 
-'''
-rot_animation = animation.FuncAnimation(fig, rotate, frames=np.arange(0,360.5,.5))
-f = r'D:\\Decoupling\\Figures\\rotationLinBound.mp4'
-writer = animation.FFMpegWriter(fps=60) 
-rot_animation.save(f, dpi=300, writer=writer)
-'''
-
-# Plot example trials
-fig, ax = plt.subplots(figsize=(6, 6))
-ax = plt.axes(projection='3d')
+# Examples in state space
+fig, ax = plt.subplots(figsize=(1,1))
 for i in range(n_exam):
-    ex_activ_pc = pca.transform(ex_activ[i])
-    ax.plot3D(ex_activ_pc[:, 0], ex_activ_pc[:, 1], ex_activ_pc[:, 2], 'x-', ms=10)
+    ax.scatter(stims[i,0],stims[i,1],s=15,c=cols[i])
+ax.set_xlim([-.5,.5])
+ax.set_ylim([-.5,.5])
+ax.set_xlabel('$x_1$')
+ax.set_ylabel('$x_2$')
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_position(('data', -.55))
+ax.spines['bottom'].set_position(('data', -.55))
+ax.xaxis.set_major_locator(MultipleLocator(.5))
+ax.yaxis.set_major_locator(MultipleLocator(.5))
+ax.set_xticklabels([])
+ax.set_yticklabels([])
+#plt.savefig('examples.eps',bbox_inches='tight',format='eps',dpi=300)
+#plt.savefig('examples.png',bbox_inches='tight',format='png',dpi=300)
 plt.show()
+
 
 # Classification lines
 fig, ax = plt.subplots(figsize=(2,2))
@@ -234,42 +243,40 @@ ax.spines['bottom'].set_position(('data', -.55))
 ax.xaxis.set_major_locator(MultipleLocator(.5))
 ax.yaxis.set_major_locator(MultipleLocator(.5))
 
-# Examples in state space
-#for i in range(n_exam):
-#    ax.scatter(stims[i,0],stims[i,1],s=50,c=colors[i])
-#plt.show()
-
 # ax.scatter(env.trial['stim'][0],env.trial['stim'][1],color='orange')
 
+
 # Add shades around lines
-# import matplotlib.patches as patches
-# hsp = .15
-# x = [-.5-hsp,.5-hsp,.5+hsp,-.5+hsp]
-# y1 = [-.5,.5,.5,-.5]
-# y2 = [.5,-.5,-.5,.5]
-# ax.add_patch(patches.Polygon(xy=list(zip(x,y1)),fill=True,color='blue',alpha=.2,linewidth=0))
-# ax.add_patch(patches.Polygon(xy=list(zip(x,y2)),fill=True,color='orange',alpha=.2,linewidth=0))
-# 
+#import matplotlib.patches as patches
+#hsp = .15
+#x = [-.5-hsp,.5-hsp,.5+hsp,-.5+hsp]
+#y1 = [-.5,.5,.5,-.5]
+#y2 = [.5,-.5,-.5,.5]
+#ax.add_patch(patches.Polygon(xy=list(zip(x,y1)),fill=True,color='blue',alpha=.2,linewidth=0))
+#ax.add_patch(patches.Polygon(xy=list(zip(x,y2)),fill=True,color='orange',alpha=.2,linewidth=0))
+ 
 # plt.savefig('classification_lines_6.png',bbox_inches='tight',format='png',dpi=300)
 # plt.savefig('classification_lines_6.eps',bbox_inches='tight',format='eps',dpi=300)
 
+'''
 # DDM plot
-#fig, ax = plt.subplots(figsize=(3,2))
-#ax.plot(tenvs[0].gt)
-#ax.set_xlim([0,20])
-#ax.set_ylim([-5.2,5.2])
-#ax.set_xlabel('Time')
-#ax.set_ylabel('$A_a$')
-#ax.set_title('Accumulators')
-#ax.spines['top'].set_visible(False)
-#ax.spines['right'].set_visible(False)
-#ax.spines['left'].set_position(('data', -.55))
-#ax.spines['bottom'].set_position(('data', -5.55))
-#ax.xaxis.set_major_locator(MultipleLocator(5))
-#ax.yaxis.set_major_locator(MultipleLocator(5))
+fig, ax = plt.subplots(figsize=(3,2))
+ax.plot(tenvs[0].gt)
+ax.set_xlim([0,20])
+ax.set_ylim([-5.2,5.2])
+ax.set_xlabel('Time')
+ax.set_ylabel('$A_a$')
+ax.set_title('Accumulators')
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_position(('data', -.55))
+ax.spines['bottom'].set_position(('data', -5.55))
+ax.xaxis.set_major_locator(MultipleLocator(5))
+ax.yaxis.set_major_locator(MultipleLocator(5))
 
 #plt.savefig('accumulators.png',bbox_inches='tight',format='png',dpi=300)
 #plt.savefig('accumulators.eps',bbox_inches='tight',format='eps',dpi=300)
+'''
 
 
 # Time legend
@@ -313,29 +320,3 @@ ax.set_xticklabels([])
 ax.set_yticklabels([])
 #plt.savefig('quad_colors.png',bbox_inches='tight',format='png',dpi=300)
 plt.show()
-
-'''
-# Shape legend
-nx1, nx2 = (6, 6)
-x1 = np.linspace(-.5, .5, nx1)
-x2 = np.linspace(-.5, .5, nx2)
-x1v, x2v = np.meshgrid(x1, x2)
-
-fig, ax = plt.subplots(figsize=(2,2))
-ax.scatter(x1v[0:int(nx1/2),0:int(nx1/2)],x2v[0:int(nx1/2),0:int(nx1/2)],marker='D',c='black',alpha=1)
-ax.scatter(x1v[0:int(nx1/2),int(nx1/2):],x2v[0:int(nx1/2),int(nx1/2):],marker='D',c='black',alpha=.4)
-ax.scatter(x1v[int(nx1/2):,0:int(nx1/2)],x2v[int(nx1/2):,0:int(nx1/2)],marker='o',c='black',alpha=1)
-ax.scatter(x1v[int(nx1/2):,int(nx1/2):],x2v[int(nx1/2):,int(nx1/2):],marker='o',c='black',alpha=.4)
-ax.set_xlim([-.55,.55])
-ax.set_ylim([-.55,.55])
-ax.set_xlabel('$x_1$')
-ax.set_ylabel('$x_2$')
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
-ax.spines['left'].set_position(('data', -.6))
-ax.spines['bottom'].set_position(('data', -.6))
-ax.xaxis.set_major_locator(MultipleLocator(.5))
-ax.yaxis.set_major_locator(MultipleLocator(.5))
-#plt.savefig('shape_dim_legend.png',bbox_inches='tight',format='png',dpi=300)
-fig.show()
-'''
