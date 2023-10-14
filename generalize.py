@@ -6,7 +6,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from torch.utils.data import Dataset, DataLoader
 import os
 from pathlib import Path
 from RNN import RNN
@@ -21,13 +20,13 @@ n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
-n_in = 3            # number of inputs
+n_in = 2            # number of inputs
 n_ff = 64           # number of neurons in feedforward neural net
 n_out = 2           # number of outputs
 batch_sz = 16       # batch size
-n_batch = 4e3       # number of batches for training
-n_test = 10        # number of test batches
-trial_sz = 4        # draw multiple trials in a row
+n_batch = 1e4       # number of batches for training
+n_test = 40        # number of test batches
+trial_sz = 1        # draw multiple trials in a row
 n_runs = 1         # number of runs for each quadrant
 print_every = int(n_batch/100)
 out_of_sample = True
@@ -42,8 +41,8 @@ task = {'DenoiseQuads':tasks.DenoiseQuads}
 task_num = len(task)
 
 # Environment
-timing = {'fixation': 100,
-          'stimulus': 2000,
+timing = {'fixation': 0,
+          'stimulus': 1900,
           'delay': 0,
           'decision': 100}
 
@@ -65,7 +64,7 @@ for n, n_task in enumerate(n_tasks):
     
     # Load network
     data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-    net_file = 'LinCent64batch1e5Noise2nTask' + str(n_task)
+    net_file = 'LinBound64batch2e4Noise2nTrial1nTask' + str(n_task)
     
     net = RNN(n_in,n_neu,n_task,n_sd,tau,dt)
     checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -293,23 +292,22 @@ plt.ylim([0,.7])
 #plt.savefig('evidence2.png',bbox_inches='tight',format='png',dpi=300)
 plt.show()
 
-
 # Plot loss history
+n = 0
 t = np.linspace(0,n_batch,100)
+
 fig, ax = plt.subplots(figsize=(2,2))
-ax.plot(t,train_loss_hist[0,:,0,:].T,color='blue',alpha = .3)
-ax.plot(t,np.average(train_loss_hist[0,:,0,:],axis=0),color='blue',label='Train')
+ax.plot(t,np.average(train_loss_hist[n],axis=1).T,color='blue',alpha = .3)
+ax.plot(t,np.average(train_loss_hist[n],axis=(0,1)),color='blue',label='Train')
 if keep_test_loss_hist:
-    ax.plot(t,test_loss_hist[0,:,0,:].T,color='red',alpha = .3)
-    ax.plot(t,np.average(test_loss_hist[0,:,0,:],axis=0),color='red',label='Test')
+    ax.plot(t,np.average(test_loss_hist[n],axis=1).T,color='red',alpha = .3)
+    ax.plot(t,np.average(test_loss_hist[n],axis=(0,1)),color='red',label='Test')
 ax.set_ylabel('Loss')
 ax.set_xlabel('Batches')
 ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
-#ax.spines['left'].set_position(('data', 1.6))
-#ax.spines['bottom'].set_position(('data', .39))
-#plt.xlim([0,22])
 plt.ylim([0,.1])
 plt.legend(prop={'size': SMALL_SIZE},frameon=False,ncol=1,bbox_to_anchor=(1,1.2))
-#plt.savefig('r_squared.png',bbox_inches='tight',format='png',dpi=300)
+#plt.savefig('loss.png',bbox_inches='tight',format='png',dpi=300)
+#plt.savefig('loss.eps',bbox_inches='tight',format='eps',dpi=300)
 plt.show()

@@ -67,7 +67,7 @@ class rot_3D_plot():
         self.n_in = n_in
         
         self.t_task = activity[0].shape[0]
-        self.n_task = trial_info[0]['ground_truth'].shape[0]
+        self.n_task = trial_info[0]['ground_truth'].shape[-1]
         
         # Constants
         self.x_eye = 0
@@ -116,7 +116,7 @@ class rot_3D_plot():
             
         return col
     
-                
+    
     # Create plot
     def plot(self):
         

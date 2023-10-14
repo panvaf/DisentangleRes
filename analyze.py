@@ -47,22 +47,22 @@ n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
-n_in = 3            # number of inputs
+n_in = 2            # number of inputs
 n_task = 48         # number of tasks
 n_trial = 40        # number of bulk example trials to plot
 n_exam = 5         # number of example points to plot with separate colors
 thres = 5           # DDM boundary
 
 # Tasks
-task = {"LinearClassification":tasks.LinearClassification}
+task = {"LinearClassificationBound":tasks.LinearClassificationBound}
 #task_rules = util.assign_task_rules(task)
 task_num = len(task)
 
 # Environment
-timing = {'fixation': 100,
+timing = {'fixation': 0,
           'stimulus': 2000,
           'delay': 0,
-          'decision': 100}
+          'decision': 0}
 
 t_task = int(sum(timing.values())/dt)
 
@@ -71,7 +71,7 @@ tenvs = [value(timing=timing,sigma=0,n_task=n_task,thres=thres) for key, value i
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinCent64batch1e5Noise2nTask' + str(n_task)
+net_file = 'LinBound64batch2e3Noise2nTask' + str(n_task)
 
 net = RNN(n_in,n_neu,n_task,0,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -161,7 +161,7 @@ for j in range(1):
     fixedpoints[:,j] = fxdpoints
 
 # Obtain individual simulations to plot and compare location of trajectories
-tenvs = [value(timing=timing,sigma=n_sd,n_task=n_task) for key, value in task.items()]
+tenvs = [value(timing=timing,sigma=n_sd,n_task=n_task, thres=thres) for key, value in task.items()]
 
 datasets = [ngym.Dataset(tenv,batch_size=1,seq_len=t_task) for tenv in tenvs]
 
@@ -193,7 +193,7 @@ for i in range(n_exam):
 colors = [['gold','limegreen'],['dodgerblue','lightcoral']]
 
 plot_full = util.rot_3D_plot(activity_dict,fixedpoints,pca,n_trial,trial_info,
-                        net_file,colors=colors)
+                        net_file,n_in=n_in,colors=colors)
 plot_full.plot()
 
 
@@ -201,7 +201,7 @@ plot_full.plot()
 cols = list(mcol.TABLEAU_COLORS.values())[:n_exam]
 
 plot_ex = util.rot_3D_plot(ex_activ_dict,fixedpoints,pca,n_exam,ex_trial_info,
-                        net_file,colors=cols)
+                        net_file,n_in=n_in,colors=cols)
 plot_ex.plot()
 
 
