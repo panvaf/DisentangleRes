@@ -14,6 +14,7 @@ import neurogym as ngym
 from random import randint
 import util
 import matplotlib.pyplot as plt
+import random
 
 # Parameters
 n_neu = 64          # number of recurrent neurons
@@ -21,22 +22,46 @@ dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
 n_in = 2            # number of inputs
-n_ff = 64           # number of neurons in feedforward neural net
+n_ff = n_neu        # number of neurons in feedforward neural net
 n_out = 2           # number of outputs
 batch_sz = 16       # batch size
-n_batch = 1e4       # number of batches for training
 n_test = 40        # number of test batches
 trial_sz = 1        # draw multiple trials in a row
-n_runs = 1         # number of runs for each quadrant
-print_every = int(n_batch/100)
+n_runs = 10         # number of runs for each quadrant
 out_of_sample = True
-keep_test_loss_hist = True
+keep_test_loss_hist = False
+activation = 'relu'
 
-n_tasks = np.array([48])
+# Reproducibility
+seed = 3
+
+def seed_everything(seed):
+    np.random.seed(seed)
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    torch.use_deterministic_algorithms(mode=True)
+    for env in tenvs_test: env.reset(seed=seed)
+    for env in tenvs_train: env.reset(seed=seed)
+
+#n_tasks = np.array([48])
+#n_batch = np.array([2.5e3])
+
+# Free RT
+n_tasks = np.array([6,12,24,48])
+n_batch = np.array([2.5e3,3e3,2.2e3,2.5e3])
+# Fixed RT
+#n_tasks = np.array([48])
+#n_batch = np.array([2.3e3])
+
+
 r_sq = np.zeros(np.size(n_tasks))
 
 # Tasks
-task = {'DenoiseQuads':tasks.DenoiseQuads}
+task = {'DenoiseQuadsFreeRT':tasks.DenoiseQuadsFreeRT}
 #task_rules = util.assign_task_rules(task)
 task_num = len(task)
 
@@ -62,11 +87,13 @@ for n, n_task in enumerate(n_tasks):
     
     print('Network trained on {} tasks'.format(n_task))
     
+    print_every = int(n_batch[n]/100)
+    
     # Load network
     data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
     net_file = 'LinBound64batch2e4Noise2nTrial1nTask' + str(n_task)
     
-    net = RNN(n_in,n_neu,n_task,n_sd,tau,dt)
+    net = RNN(n_in,n_neu,n_task,n_sd,activation,tau,dt)
     checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
     net.load_state_dict(checkpoint['state_dict'])
     
@@ -101,18 +128,23 @@ for n, n_task in enumerate(n_tasks):
                 quad_train = quads
                 quad_test = quads
             
-            # Datasets
+            # Environments
             tenvs_train = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=quad_train) for key, value in task.items()]
-            datasets_train = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz*t_task) for tenv in tenvs_train]
-            
             tenvs_test = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=quad_test) for key, value in task.items()]
-            datasets_test = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_sz*t_task) for tenv in tenvs_test]
+            
+            # Seed
+            seed_everything(seed)
+            
+            # Datasets
+            datasets_train = [ngym.Dataset(tenv,batch_size=batch_sz,
+                             seq_len=trial_sz*t_task) for tenv in tenvs_train]
+            datasets_test = [ngym.Dataset(tenv,batch_size=batch_sz,
+                             seq_len=trial_sz*t_task) for tenv in tenvs_test]
             
             # Reset parameters of decoder for each run
             for layer in ff_net.children():
                if hasattr(layer, 'reset_parameters'):
                    layer.reset_parameters()
-            
                         
             # Optimizer
             opt = optim.Adam(ff_net.parameters(), lr=0.003)
@@ -121,14 +153,14 @@ for n, n_task in enumerate(n_tasks):
             ff_net.train()
             train_loss = 0; t = 0
             
-            for i in range(int(n_batch)):
+            for i in range(int(n_batch[n])):
                 # Randomly pick task
                 dataset = datasets_train[randint(0,task_num-1)]
                 # Generate data for current batch
                 inputs, target = dataset()
                 
                 # Reshape so that batch is first dimension
-                inputs = np.transpose(inputs,(1,0,2))[:,:,0:n_in]
+                inputs = np.transpose(inputs,(1,0,2))[:,:,-n_in:]
                 target = np.transpose(target,(1,0,2))
                 
                 # Turn into tensors
@@ -155,12 +187,12 @@ for n, n_task in enumerate(n_tasks):
                 # Store history of average training loss
                 if (i % print_every == 0):
                     train_loss /= print_every
-                    print('{} % of the simulation complete'.format(round(i/n_batch*100)))
+                    print('{} % of the simulation complete'.format(round(i/n_batch[n]*100)))
                     print('Train loss {:0.3f}'.format(train_loss))
                     train_loss_hist[n,q,run,t] = train_loss
                     
                     # Keep track of test loss history
-                    if keep_test_loss_hist or round(i/n_batch*100) == 99:
+                    if keep_test_loss_hist or round(i/n_batch[n]*100) == 99:
                         
                         # Make sure weights are frozen
                         ff_net.eval()
@@ -175,7 +207,7 @@ for n, n_task in enumerate(n_tasks):
                                 inputs, target = dataset()
                                 
                                 # Reshape so that batch is first dimension
-                                inputs = np.transpose(inputs,(1,0,2))[:,:,0:n_in]
+                                inputs = np.transpose(inputs,(1,0,2))[:,:,-n_in:]
                                 target = np.transpose(target,(1,0,2))
                                 
                                 # Turn into tensors
@@ -200,7 +232,7 @@ for n, n_task in enumerate(n_tasks):
                             test_loss_hist[n,q,run] = test_loss
                         
                         # Keep final errors
-                        if round(i/n_batch*100) == 99:
+                        if round(i/n_batch[n]*100) == 99:
                             a = output.detach().numpy()
                             b = target.detach().numpy()
                             c = b - a
@@ -294,7 +326,7 @@ plt.show()
 
 # Plot loss history
 n = 0
-t = np.linspace(0,n_batch,100)
+t = np.linspace(0,n_batch[n],100)
 
 fig, ax = plt.subplots(figsize=(2,2))
 ax.plot(t,np.average(train_loss_hist[n],axis=1).T,color='blue',alpha = .3)
