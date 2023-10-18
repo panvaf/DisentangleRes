@@ -27,12 +27,12 @@ dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
 print_every = int(n_batch/100)
-n_out = 48          # number of outputs per task
+n_out = 24          # number of outputs per task
 bal_err = False     # whether to balance penalization of decision vs. integration
-trial_num = 1       # number of trials drawn in a row
+trial_num = 4       # number of trials drawn in a row
 rand_pen = False    # randomly penalize a certain time point in the trial
 bound = 5           # DDM boundary
-activation = 'tanh' # activation function
+activation = 'relu' # activation function
 
 # Environment
 timing = {'fixation': 100,

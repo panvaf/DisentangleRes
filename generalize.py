@@ -21,7 +21,7 @@ n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
-n_in = 2            # number of inputs
+n_in = 3            # number of inputs
 n_ff = n_neu        # number of neurons in feedforward neural net
 n_out = 2           # number of outputs
 batch_sz = 16       # batch size
@@ -29,7 +29,7 @@ n_test = 40        # number of test batches
 trial_sz = 1        # draw multiple trials in a row
 n_runs = 10         # number of runs for each quadrant
 out_of_sample = True
-keep_test_loss_hist = False
+keep_test_loss_hist = True
 activation = 'relu'
 
 # Reproducibility
@@ -47,27 +47,25 @@ def seed_everything(seed):
     for env in tenvs_test: env.reset(seed=seed)
     for env in tenvs_train: env.reset(seed=seed)
 
-#n_tasks = np.array([48])
-#n_batch = np.array([2.5e3])
+n_tasks = np.array([24])
+n_batch = np.array([3.5e3])
 
 # Free RT
-n_tasks = np.array([6,12,24,48])
-n_batch = np.array([2.5e3,3e3,2.2e3,2.5e3])
+#n_tasks = np.array([6,12,24,48])
+#n_batch = np.array([2.5e3,3e3,2.2e3,2.5e3])
 # Fixed RT
-#n_tasks = np.array([48])
-#n_batch = np.array([2.3e3])
+#n_tasks = np.array([2,3,6,12,24,48])
+#n_batch = np.array([3e3,3e3,4e3,3e3,3.5e3,2e3])
 
-
-r_sq = np.zeros(np.size(n_tasks))
 
 # Tasks
-task = {'DenoiseQuadsFreeRT':tasks.DenoiseQuadsFreeRT}
+task = {'DenoiseQuads':tasks.DenoiseQuads}
 #task_rules = util.assign_task_rules(task)
 task_num = len(task)
 
 # Environment
-timing = {'fixation': 0,
-          'stimulus': 1900,
+timing = {'fixation': 100,
+          'stimulus': 2000,
           'delay': 0,
           'decision': 100}
 
@@ -76,11 +74,16 @@ outputs = np.arange(t_task-1,trial_sz*t_task,t_task)
 
 # Store losses
 train_loss_hist = np.zeros((np.size(n_tasks),4,n_runs,100))
+r_sq = np.zeros((np.size(n_tasks),4,n_runs))
 if keep_test_loss_hist:
     test_loss_hist = np.zeros((np.size(n_tasks),4,n_runs,100))
 else:
     test_loss_hist = np.zeros((np.size(n_tasks),4,n_runs))
     
+# Baseline for R^2
+x = np.random.rand(100000) - .5
+var = np.var(x)
+
 # Begin!
 
 for n, n_task in enumerate(n_tasks):
@@ -91,7 +94,7 @@ for n, n_task in enumerate(n_tasks):
     
     # Load network
     data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-    net_file = 'LinBound64batch2e4Noise2nTrial1nTask' + str(n_task)
+    net_file = 'LinCent64batch1e5Noise2nTask' + str(n_task)
     
     net = RNN(n_in,n_neu,n_task,n_sd,activation,tau,dt)
     checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -110,7 +113,6 @@ for n, n_task in enumerate(n_tasks):
     for param in net.parameters():
         param.requires_grad = False
     
-    errors = []
     quads = np.array([1,2,3,4])
     
     # Choose a quadrant for test
@@ -120,6 +122,8 @@ for n, n_task in enumerate(n_tasks):
         quad_train = np.setdiff1d(quads,quad_test)
         
         for run in range(n_runs):
+            
+            errors = []
             
             if out_of_sample:
                 print("Run {} of {} for quadrant {}".format(run+1,n_runs,quad_test))
@@ -245,16 +249,14 @@ for n, n_task in enumerate(n_tasks):
                         
                     train_loss = 0; t += 1
                 
-    errors = np.reshape(np.asarray(errors),(-1,n_out))
-    err = np.abs(errors) > .5
+            errors = np.reshape(np.asarray(errors),(-1,n_out))
+            err = np.abs(errors) > .5
     
-    mse = np.sum(errors**2)/np.size(errors)
-    x = np.random.rand(100000) - .5
-    var = np.var(x)
-    r_sq[n] = 1 - mse/var
+            mse = np.sum(errors**2)/np.size(errors)
+            r_sq[n,q,run] = 1 - mse/var
     
-    plt.hist(errors,100)
-    plt.show()
+            #plt.hist(errors,100)
+            #plt.show()
 
 # Plot
 
@@ -278,22 +280,28 @@ plt.ylabel('Count')
 plt.show()
 
 # r-squared plot
+perc = np.percentile(r_sq,[25,50,75],axis=(1,2))
+offset = 0.1; off_p = 1+offset; off_m = 1-offset 
+
 fig, ax = plt.subplots(figsize=(2,2))
-ax.scatter(n_tasks,r_sq)
-#ax.scatter(n_tasks,r_sq_test,label='Out-of-sample')
+ax.scatter(n_tasks*off_p,perc[1])
+ax.errorbar(n_tasks*off_p,perc[1],yerr=[perc[1]-perc[0],perc[2]-perc[1]],linestyle='')
+#ax.scatter(n_tasks_free*off_m,perc_free[1],color='firebrick',label='Free')
+#ax.errorbar(n_tasks_free*off_m,perc_free[1],yerr=[perc_free[1]-perc_free[0],
+#                    perc_free[2]-perc_free[1]],linestyle='',color='firebrick')
 ax.set_ylabel('Out-of-sample $R^2$')
 ax.set_xlabel('# of tasks')
 ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
 ax.spines['left'].set_position(('data', 1.6))
-ax.spines['bottom'].set_position(('data', .39))
+ax.spines['bottom'].set_position(('data', -.02))
 ax.set_xscale("log")
 ax.set_xticks([2,10,50])
 ax.set_xticklabels([2,10,50])
-#plt.xlim([0,22])
-plt.ylim([0.4,1.1])
-plt.legend(prop={'size': SMALL_SIZE},frameon=False,ncol=1,bbox_to_anchor=(1,1.2))
+plt.ylim([0,1])
+plt.legend(frameon=False,ncol=1,bbox_to_anchor=(1.2,.6),title='RT')
 #plt.savefig('r_squared.png',bbox_inches='tight',format='png',dpi=300)
+#plt.savefig('r_squared.eps',bbox_inches='tight',format='eps',dpi=300)
 plt.show()
 
 '''

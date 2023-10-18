@@ -48,11 +48,11 @@ dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
 n_in = 3            # number of inputs
-n_task = 3         # number of tasks
+n_task = 24         # number of tasks
 n_trial = 40        # number of bulk example trials to plot
 n_exam = 5         # number of example points to plot with separate colors
 thres = 5           # DDM boundary
-activation = 'tanh'
+activation = 'relu'
 
 # Tasks
 task = {"LinearClassification":tasks.LinearClassification}
@@ -72,7 +72,7 @@ tenvs = [value(timing=timing,sigma=0,n_task=n_task,thres=thres) for key, value i
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinCent64tanhbatch1e5Noise2nTrial1nTask' + str(n_task)
+net_file = 'LinCent64batch1e5Noise2nTask' + str(n_task)
 
 net = RNN(n_in,n_neu,n_task,0,activation,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
