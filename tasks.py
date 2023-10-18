@@ -915,7 +915,95 @@ class DenoiseQuads(ngym.TrialEnv):
         gt = self.gt_now
 
         return self.ob_now, reward, False, {'new_trial': new_trial, 'gt': gt}
-    
+
+
+
+class DenoiseQuadsFreeRT(ngym.TrialEnv):
+    """Same as Denoise but choose which quadrants to include, for free RT task 
+        (information keeps coming in and decision is made at arbitrary point)
+
+    Inputs:
+        sigma: float, input noise level
+        n_task: number of classification tasks to be solved
+    """
+
+    def __init__(self, dt=100, rewards=None, timing=None, sigma=1.0, n_task = 2, 
+                 quad_num = np.array([1,2,3,4])):
+        super().__init__(dt=dt)
+        
+        self.sigma = sigma / np.sqrt(self.dt)  # Input noise
+        self.n_task = n_task
+        self.quads = np.array([[0.5,0.5],[-0.5,0.5],[-0.5,-0.5],[0.5,-0.5]])[quad_num-1]
+        
+        # Rewards
+        self.rewards = {'abort': -0.1, 'correct': +1., 'fail': 0.}
+        if rewards:
+            self.rewards.update(rewards)
+
+        if timing:
+            self.timing.update(timing)
+
+        self.abort = False
+
+        self.choices = np.arange(3)
+
+        name = {'fixation': 0, 'stimulus': range(1, 3), 'task': range(3, 3)}
+        self.observation_space = spaces.Box(
+            -np.inf, np.inf, shape=(3,), dtype=np.float32, name=name)
+        name = {'fixation': 0, 'choice': range(1, 3)}
+        self.action_space = spaces.Box(
+            -np.inf, np.inf, shape=(self.n_task,), dtype=np.float32)
+        
+    def _new_trial(self, **kwargs):
+        """
+        Initialize a trial.
+        Sets the following variables:
+            durations, which stores the duration of the different periods
+            ground truth: correct response for the trial
+            stim: stimulus strenghts (evidence) for the trial
+            obs: observation
+        """
+        # Trial info
+        quad = self.quads[np.random.choice(self.quads.shape[0])]
+        stim = self.rng.rand(2)*quad
+        ground_truth = stim
+        
+        trial = {
+            'stim': stim,
+            'ground_truth': ground_truth
+        }
+        trial.update(kwargs)
+
+        # Periods
+        self.add_period(['fixation', 'stimulus', 'decision'])
+
+        # Observations
+        self.add_ob(1, period=['fixation', 'stimulus'], where='fixation')
+        self.add_ob(stim, period=['stimulus','decision'], where='stimulus')
+        self.add_randn(0, self.sigma, period=['stimulus','decision'], where='stimulus')
+        
+        # Ground truth
+        self.set_groundtruth(ground_truth, period='decision')
+
+        return trial
+
+    def _step(self, action):
+        """
+        _step receives an action and returns:
+            a new observation, obs
+            reward associated with the action, reward
+            a boolean variable indicating whether the experiment has end, done
+            a dictionary with extra information:
+                ground truth correct response, info['gt']
+                boolean indicating the end of the trial, info['new_trial']
+        """
+        new_trial = False
+        # rewards
+        reward = 0
+        gt = self.gt_now
+
+        return self.ob_now, reward, False, {'new_trial': new_trial, 'gt': gt}
+
     
 class DenoiseQuadOut(ngym.TrialEnv):
     """Same as Denoise leave one quadrant out
