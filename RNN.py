@@ -9,7 +9,7 @@ import torch.nn as nn
 
 class RNN(nn.Module):
     
-    def __init__(self,inp_size,rec_size,out_size,n_sd=.1,tau=100,dt=10):
+    def __init__(self,inp_size,rec_size,out_size,n_sd=.1,activation='relu',tau=100,dt=10):
         super().__init__()
         
         # Constants
@@ -23,6 +23,12 @@ class RNN(nn.Module):
         self.inp_to_rec = nn.Linear(inp_size, rec_size)
         self.rec_to_rec = nn.Linear(rec_size, rec_size)
         self.rec_to_out = nn.Linear(rec_size, out_size)
+        
+        # Activation function
+        if activation == 'relu':
+            self.activation = torch.relu
+        elif activation == 'tanh':
+            self.activation = torch.tanh        
 
 
     def init(self,inp_shape):
@@ -39,7 +45,7 @@ class RNN(nn.Module):
         
         h = self.inp_to_rec(inp) + self.rec_to_rec(r) + \
                     self.n_sd*torch.randn(self.rec_size)
-        r_new = (1 - self.alpha)*r + self.alpha*torch.relu(h)
+        r_new = (1 - self.alpha)*r + self.alpha*self.activation(h)
         
         return r_new
 

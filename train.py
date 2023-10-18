@@ -15,30 +15,30 @@ import os
 from pathlib import Path
 
 # Tasks
-task = {"LinearClassificationBound":tasks.LinearClassificationBound}
+task = {"LinearClassification":tasks.LinearClassification}
 #task_rules = util.assign_task_rules(task)
 task_num = len(task)
 
 # Constants
 n_neu = 64          # number of recurrent neurons
 batch_sz = 16       # batch size
-n_batch = 2e4       # number of batches
+n_batch = 1e5       # number of batches
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
-n_ff = 100          # size of feedforward layer
 print_every = int(n_batch/100)
 n_out = 48          # number of outputs per task
 bal_err = False     # whether to balance penalization of decision vs. integration
 trial_num = 1       # number of trials drawn in a row
 rand_pen = False    # randomly penalize a certain time point in the trial
 bound = 5           # DDM boundary
+activation = 'tanh' # activation function
 
 # Environment
-timing = {'fixation': 0,
+timing = {'fixation': 100,
           'stimulus': 2000,
           'delay': 0,
-          'decision': 0}
+          'decision': 100}
 t_task = int(sum(timing.values())/dt)
 grace = 200
 #thres = np.array([0.005, 0.02, 0.04, 0.07, 0.11, 0.15])
@@ -48,7 +48,8 @@ n_grace = int(grace/dt); n_decision = int(timing['decision']/dt); n_trial = int(
 
 # Save location
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinBound' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
+net_file = 'LinCent' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
+            (activation if activation != 'relu' else '') + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
             (('Noise' + str(n_sd)) if n_sd else '') + \
             (('tau' + str(tau)) if tau != 100 else '') + \
@@ -82,7 +83,7 @@ else:
     mask = np.ones((batch_sz,trial_num*t_task,n_out))
     
 # Initialize RNN  
-net = RNN(n_in,n_neu,n_out*task_num,n_sd,tau,dt)
+net = RNN(n_in,n_neu,n_out*task_num,n_sd,activation,tau,dt)
 
 # Feedforward NN
 ff_net = nn.Sequential(
