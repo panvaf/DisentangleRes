@@ -29,12 +29,13 @@ n_sd = 2            # standard deviation of injected noise
 print_every = int(n_batch/100)
 n_out = 48          # number of outputs per task
 bal_err = False     # whether to balance penalization of decision vs. integration
-pen_end = True     # only penalize final time point
+pen_end = False     # only penalize final time point
 trial_num = 1       # number of trials drawn in a row
 rand_pen = False    # randomly penalize a certain time point in the trial
-
 bound = 5           # DDM boundary
 activation = 'relu' # activation function
+lr = 3e-3           # Learning rate
+run = 0
 
 # Environment
 timing = {'fixation': 100,
@@ -50,16 +51,17 @@ n_grace = int(grace/dt); n_decision = int(timing['decision']/dt); n_trial = int(
 
 # Save location
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinCentOut' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
+net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
             (activation if activation != 'relu' else '') + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
+            (('LR' + str(lr)) if lr != 3e-3 else '')  + \
             (('Noise' + str(n_sd)) if n_sd else '') + \
             (('tau' + str(tau)) if tau != 100 else '') + \
             (('nTrial' + str(trial_num)) if trial_num != 4 else '')  + \
             (('nTask' + str(n_out)) if n_out != 2 else '')  + \
             (('Delay' + str(timing['delay'])) if timing['delay'] != 0 else '')  + \
             ('BalErr' if bal_err else '') + ('RandPen' if rand_pen else '') + \
-            ('PenEnd' if pen_end else '')
+            ('PenEnd' if pen_end else '') + (('run' + str(run)) if run != 0 else '')
      
 # Make supervised datasets
 tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out,thres=bound) for key, value in task.items()]
@@ -94,13 +96,13 @@ net = RNN(n_in,n_neu,n_out*task_num,n_sd,activation,tau,dt)
 
 # Feedforward NN
 ff_net = nn.Sequential(
-        nn.Linear(n_out*task_num,n_out*task_num)
-        #nn.Tanh()
+        nn.Linear(n_neu,n_out*task_num),
+        nn.Tanh()
         #nn.Linear(n_ff,n_out*task_num)
         )
 
 # Optimizer
-opt = optim.Adam(net.parameters(), lr=0.003)
+opt = optim.Adam(net.parameters(), lr=lr)
 opt.add_param_group({'params': ff_net.parameters()})
 
 # Loss
@@ -143,7 +145,7 @@ for i in range(int(n_batch)):
     
     # Forward run
     net_out, fr = net(inputs)
-    output = ff_net(net_out)
+    output = ff_net(fr)
     
     # Compute loss
     #loss = criterion(output.view(-1,n_out),target.flatten())

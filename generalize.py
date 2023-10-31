@@ -27,7 +27,7 @@ n_out = 2           # number of outputs
 batch_sz = 16       # batch size
 n_test = 40        # number of test batches
 trial_sz = 1        # draw multiple trials in a row
-n_runs = 1         # number of runs for each quadrant
+n_runs = 10         # number of runs for each quadrant
 out_of_sample = True
 keep_test_loss_hist = True
 activation = 'relu'
@@ -48,7 +48,7 @@ def seed_everything(seed):
     for env in tenvs_train: env.reset(seed=seed)
 
 n_tasks = np.array([48])
-n_batch = np.array([5e3])
+n_batch = np.array([2e3])
 
 # Free RT
 #n_tasks = np.array([6,12,24,48])
@@ -65,6 +65,10 @@ n_batch = np.array([5e3])
 # LinCentOut
 #n_tasks = np.array([48])
 #n_batch = np.array([2.2e3])
+# LinCentOutTanh
+#n_tasks = np.array([48])
+#n_batch = np.array([3e3])
+
 
 # Tasks
 task = {'DenoiseQuads':tasks.DenoiseQuads}
@@ -102,7 +106,7 @@ for n, n_task in enumerate(n_tasks):
     
     # Load network
     data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-    net_file = 'LinCentOut64batch1e5Noise2nTrial1nTask' + str(n_task) + 'PenEnd'
+    net_file = 'LinCentOutTanhSL64batch1e5LR0.001Noise2nTrial1nTask' + str(n_task)
     
     net = RNN(n_in,n_neu,n_task,n_sd,activation,tau,dt)
     checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
