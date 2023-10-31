@@ -81,7 +81,9 @@ class rot_3D_plot():
     def get_colors(self,colors):
         
         if isinstance(colors[0],list):
-            self.marker = 'square'; self.mark_sz = 5
+            self.marker = 'square'; self.mark_sz = 5; self.width = 2
+            self.opacity = 1; self.individual_examples = False
+            
             col = []
             
             for i in range(self.n_trial):
@@ -112,7 +114,8 @@ class rot_3D_plot():
             
         else:
             col = colors
-            self.marker = 'circle'; self.mark_sz = 7
+            self.marker = 'circle'; self.mark_sz = 7; self.width = 3
+            self.opacity = 0.4; self.individual_examples = True
             
         return col
     
@@ -121,17 +124,23 @@ class rot_3D_plot():
     def plot(self):
         
         fig = go.Figure()
+        
 
         for i in range(self.n_trial):
             activity_pc = self.pca.transform(self.activity[i])
             
+            if self.individual_examples:
+                line_col = self.colors[i]
+            else:
+                line_col = 'darkblue'
+            
             fig.add_traces(go.Scatter3d(x=activity_pc[:, 0],y=activity_pc[:, 1],
                        z=activity_pc[:, 2],marker=dict(size=3,color=np.arange(self.t_task),
-                       colorscale='blues',symbol='circle'),line=dict(color='darkblue',width=2)))
+                       colorscale='blues',symbol='circle'),line=dict(color=line_col,width=self.width)))
             if self.colors[i]:
                 fig.add_traces(go.Scatter3d(x=np.array(activity_pc[-1, 0]),y=np.array(activity_pc[-1, 1]),
                        z=np.array(activity_pc[-1, 2]),marker=dict(size=self.mark_sz,color=self.colors[i],symbol=self.marker),
-                       line=dict(color='darkblue',width=2)))
+                       line=dict(color='darkblue',width=self.width)))
                 
         # Fixed points are shown in cross
         cols = ['firebrick','yellow']
@@ -139,7 +148,7 @@ class rot_3D_plot():
             fixedpoints_pc = self.pca.transform(self.fixedpoints[:,i])
             fig.add_traces(go.Scatter3d(x=fixedpoints_pc[:, 0],y=fixedpoints_pc[:, 1],
                       z=fixedpoints_pc[:, 2],marker=dict(size=2,color=cols[0],symbol='x'),
-                      mode='markers'))
+                      mode='markers',opacity=self.opacity))
             
         
         # Rotating figure

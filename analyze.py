@@ -15,10 +15,8 @@ import tasks
 import matplotlib.pyplot as plt
 from random import randint
 import neurogym as ngym
-import matplotlib as mpl 
 from matplotlib.ticker import MultipleLocator
 import matplotlib.colors as mcol
-
 
 # Fontsize appropriate for plots
 SMALL_SIZE = 10
@@ -33,29 +31,20 @@ plt.rc('ytick', labelsize=SMALL_SIZE)     # fontsize of the tick labels
 plt.rc('legend', fontsize=SMALL_SIZE)     # legend fontsize
 plt.rc('figure', titlesize=MEDIUM_SIZE)   # fontsize of the figure title
 
-# Directory for ffmpeg
-
-mpl.rcParams['animation.ffmpeg_path'] = r'D:\Lab Resources\ffmpeg\bin\\ffmpeg.exe'
-
-# Rotating animation
-
-def rotate(angle):
-    ax.view_init(azim=angle)
-
 # Parameters
 n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
 n_in = 3            # number of inputs
-n_task = 24         # number of tasks
+n_task = 48         # number of tasks
 n_trial = 40        # number of bulk example trials to plot
 n_exam = 5         # number of example points to plot with separate colors
 thres = 5           # DDM boundary
 activation = 'relu'
 
 # Tasks
-task = {"LinearClassification":tasks.LinearClassification}
+task = {"LinearClassificationCentOut":tasks.LinearClassificationCentOut}
 #task_rules = util.assign_task_rules(task)
 task_num = len(task)
 
@@ -72,7 +61,7 @@ tenvs = [value(timing=timing,sigma=0,n_task=n_task,thres=thres) for key, value i
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinCent64batch1e5Noise2nTask' + str(n_task)
+net_file = 'LinCentOut64batch1e5Noise2nTrial1nTask' + str(n_task) + 'PenEnd'
 
 net = RNN(n_in,n_neu,n_task,0,activation,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))

@@ -1,5 +1,5 @@
 """
-Check if network generalizes to other tasks.
+Evaluate zero-shot, out-of-distribution generalization.
 """
 
 import torch
@@ -27,13 +27,13 @@ n_out = 2           # number of outputs
 batch_sz = 16       # batch size
 n_test = 40        # number of test batches
 trial_sz = 1        # draw multiple trials in a row
-n_runs = 10         # number of runs for each quadrant
+n_runs = 1         # number of runs for each quadrant
 out_of_sample = True
 keep_test_loss_hist = True
 activation = 'relu'
 
 # Reproducibility
-seed = 3
+seed = 42  # 3
 
 def seed_everything(seed):
     np.random.seed(seed)
@@ -47,8 +47,8 @@ def seed_everything(seed):
     for env in tenvs_test: env.reset(seed=seed)
     for env in tenvs_train: env.reset(seed=seed)
 
-n_tasks = np.array([24])
-n_batch = np.array([3.5e3])
+n_tasks = np.array([48])
+n_batch = np.array([5e3])
 
 # Free RT
 #n_tasks = np.array([6,12,24,48])
@@ -56,7 +56,15 @@ n_batch = np.array([3.5e3])
 # Fixed RT
 #n_tasks = np.array([2,3,6,12,24,48])
 #n_batch = np.array([3e3,3e3,4e3,3e3,3.5e3,2e3])
-
+# Half space
+#n_tasks = np.array([24])
+#n_batch = np.array([2e3])
+# LinMult
+#n_tasks = np.array([48])
+#n_batch = np.array([1e3])
+# LinCentOut
+#n_tasks = np.array([48])
+#n_batch = np.array([2.2e3])
 
 # Tasks
 task = {'DenoiseQuads':tasks.DenoiseQuads}
@@ -79,7 +87,7 @@ if keep_test_loss_hist:
     test_loss_hist = np.zeros((np.size(n_tasks),4,n_runs,100))
 else:
     test_loss_hist = np.zeros((np.size(n_tasks),4,n_runs))
-    
+
 # Baseline for R^2
 x = np.random.rand(100000) - .5
 var = np.var(x)
@@ -94,7 +102,7 @@ for n, n_task in enumerate(n_tasks):
     
     # Load network
     data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-    net_file = 'LinCent64batch1e5Noise2nTask' + str(n_task)
+    net_file = 'LinCentOut64batch1e5Noise2nTrial1nTask' + str(n_task) + 'PenEnd'
     
     net = RNN(n_in,n_neu,n_task,n_sd,activation,tau,dt)
     checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -118,19 +126,17 @@ for n, n_task in enumerate(n_tasks):
     # Choose a quadrant for test
     for q, quad_test in enumerate(quads):
         
-        # All the other quadrants for train
-        quad_train = np.setdiff1d(quads,quad_test)
-        
         for run in range(n_runs):
             
             errors = []
             
+            # Training set
             if out_of_sample:
-                print("Run {} of {} for quadrant {}".format(run+1,n_runs,quad_test))
+                quad_train = np.setdiff1d(quads,quad_test)
             else:
-                print("Run {} of {}".format(4*q+run+1,n_runs*4))
                 quad_train = quads
-                quad_test = quads
+           
+            print("Run {} of {} for quadrant {}".format(run+1,n_runs,quad_test))
             
             # Environments
             tenvs_train = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=quad_train) for key, value in task.items()]
@@ -333,21 +339,24 @@ plt.ylim([0,.7])
 plt.show()
 
 # Plot loss history
-n = 0
-t = np.linspace(0,n_batch[n],100)
 
-fig, ax = plt.subplots(figsize=(2,2))
-ax.plot(t,np.average(train_loss_hist[n],axis=1).T,color='blue',alpha = .3)
-ax.plot(t,np.average(train_loss_hist[n],axis=(0,1)),color='blue',label='Train')
-if keep_test_loss_hist:
-    ax.plot(t,np.average(test_loss_hist[n],axis=1).T,color='red',alpha = .3)
-    ax.plot(t,np.average(test_loss_hist[n],axis=(0,1)),color='red',label='Test')
-ax.set_ylabel('Loss')
-ax.set_xlabel('Batches')
-ax.spines['top'].set_visible(False)
-ax.spines['right'].set_visible(False)
-plt.ylim([0,.1])
-plt.legend(prop={'size': SMALL_SIZE},frameon=False,ncol=1,bbox_to_anchor=(1,1.2))
-#plt.savefig('loss.png',bbox_inches='tight',format='png',dpi=300)
-#plt.savefig('loss.eps',bbox_inches='tight',format='eps',dpi=300)
-plt.show()
+for n, n_task in enumerate(n_tasks):
+    
+    t = np.linspace(0,n_batch[n],100)
+    
+    fig, ax = plt.subplots(figsize=(2,2))
+    ax.plot(t,np.average(train_loss_hist[n],axis=1).T,color='blue',alpha = .3)
+    ax.plot(t,np.average(train_loss_hist[n],axis=(0,1)),color='blue',label='Train')
+    if keep_test_loss_hist:
+        ax.plot(t,np.average(test_loss_hist[n],axis=1).T,color='red',alpha = .3)
+        ax.plot(t,np.average(test_loss_hist[n],axis=(0,1)),color='red',label='Test')
+    ax.set_ylabel('Loss')
+    ax.set_xlabel('Batches')
+    ax.set_title('Trained on {} tasks'.format(n_task))
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    plt.ylim([0,.1])
+    plt.legend(prop={'size': SMALL_SIZE},frameon=False,ncol=1)
+    #plt.savefig('loss.png',bbox_inches='tight',format='png',dpi=300)
+    #plt.savefig('loss.eps',bbox_inches='tight',format='eps',dpi=300)
+    plt.show()
