@@ -216,3 +216,18 @@ class rot_3D_plot():
     def rotate_z(self, theta):
         w = self.x_eye+1j*self.y_eye
         return np.real(np.exp(1j*theta)*w), np.imag(np.exp(1j*theta)*w), self.z_eye
+    
+    
+# Correlation coeffient between different matrices
+
+def corr2_coeff(A, B):
+    # Rowwise mean of input arrays & subtract from input arrays themeselves
+    A_mA = A - A.mean(1)[:, None]
+    B_mB = B - B.mean(1)[:, None]
+
+    # Sum of squares across rows
+    ssA = (A_mA**2).sum(1)
+    ssB = (B_mB**2).sum(1)
+
+    # Finally get corr coeff
+    return np.dot(A_mA, B_mB.T) / np.sqrt(np.dot(ssA[:, None],ssB[None]))

@@ -45,7 +45,7 @@ n_sweep = 8         # Number of stimuli values to sweep
 activation = 'relu'
 
 # Tasks
-task = {"MultiplyClassificationFull":tasks.MultiplyClassificationFull}
+task = {"LinearClassificationCentOut":tasks.LinearClassificationCentOut}
 #task_rules = util.assign_task_rules(task)
 task_num = len(task)
 
@@ -57,7 +57,7 @@ timing = {'fixation': 100,
 
 t_task = int(sum(timing.values())/dt)
 
-thres = np.array([0.005, 0.01, 0.018, 0.027, 0.04, 0.052, 0.07, 0.085, 0.105, 0.125, 0.15, 0.18])
+#thres = np.array([0.005, 0.01, 0.018, 0.027, 0.04, 0.052, 0.07, 0.085, 0.105, 0.125, 0.15, 0.18])
 tenvs = [value(timing=timing,sigma=0,n_task=n_task,thres=thres) for key, value in task.items()]
 
 # Load network
@@ -313,6 +313,7 @@ ax.set_yticklabels([])
 #plt.savefig('quad_colors.eps',bbox_inches='tight',format='eps',dpi=300)
 plt.show()
 
+
 # Steady-state firing rates raster plot
 
 ss_fr = np.zeros((n_sweep,n_sweep,n_neu))
@@ -329,14 +330,21 @@ for i, x1 in enumerate(x1s):
         _, rnn_activity = net(inp)
         ss_fr[i,j] = rnn_activity[0, -1, :].detach().numpy()
         
-ss_fr = np.reshape(ss_fr,(n_sweep,n_sweep,int(np.sqrt(n_neu)),int(np.sqrt(n_neu))))
+# Correlations
+x1corr = util.corr2_coeff(x1s[np.newaxis,:],np.mean(ss_fr,axis=1).T)
+x2corr = util.corr2_coeff(x2s[np.newaxis,:],np.mean(ss_fr,axis=0).T)
 
-# Plot
+# Reshape        
+ss_fr = np.reshape(ss_fr,(n_sweep,n_sweep,int(np.sqrt(n_neu)),int(np.sqrt(n_neu))))
+x1corr = np.reshape(x1corr,(int(np.sqrt(n_neu)),int(np.sqrt(n_neu))))
+x2corr = np.reshape(x2corr,(int(np.sqrt(n_neu)),int(np.sqrt(n_neu))))
+
+# Plot activity
 fig, axes = plt.subplots(8, 8, figsize=(8, 8))
 
 for i in range(n_sweep):
     for j in range(n_sweep):
-        ax = axes[i, j]
+        ax = axes[-j-1,i]
         im = ax.imshow(ss_fr[i,j], cmap='Greys')
         ax.set_xticks([])
         ax.set_yticks([])
@@ -350,5 +358,25 @@ cbar.set_label('Firing rate (spikes/s)')
 fig.text(0.5, 0.08, '$x_1$', ha='center')
 fig.text(0.08, 0.5, '$x_2$', va='center', rotation='vertical')
 
-# Display the plots
+plt.show()
+
+# Plot correlations
+
+fig, axes = plt.subplots(1, 2, figsize=(4, 2))
+
+im1 = axes[0].imshow(x1corr, cmap='RdBu')
+axes[0].set_title('$x_1$')
+axes[0].set_xticks([])
+axes[0].set_yticks([])        
+
+im2 = axes[1].imshow(x2corr, cmap='RdBu')
+axes[1].set_title('$x_2$')
+axes[1].set_xticks([])
+axes[1].set_yticks([])        
+
+# Create a common colorbar
+cax = fig.add_axes([0.92, 0.15, 0.02, 0.7])  # [x, y, width, height]
+cbar = plt.colorbar(im1, cax=cax)
+cbar.set_label('Correlation coefficient')
+
 plt.show()

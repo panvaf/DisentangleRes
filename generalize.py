@@ -142,7 +142,7 @@ for n, n_task in enumerate(n_tasks):
                 quad_train = np.setdiff1d(quads,quad_test)
             else:
                 quad_train = quads
-           
+            
             print("Run {} of {} for quadrant {}".format(run+1,n_runs,quad_test))
             
             # Environments
