@@ -34,8 +34,8 @@ trial_num = 1       # number of trials drawn in a row
 rand_pen = False    # randomly penalize a certain time point in the trial
 bound = 5           # DDM boundary
 activation = 'relu' # activation function
-lr = 3e-3           # Learning rate
-run = 0
+lr = 1e-3           # Learning rate
+run = 1
 
 # Environment
 timing = {'fixation': 100,
@@ -144,7 +144,7 @@ for i in range(int(n_batch)):
     opt.zero_grad()
     
     # Forward run
-    net_out, fr = net(inputs)
+    _, fr = net(inputs)
     output = ff_net(fr)
     
     # Compute loss

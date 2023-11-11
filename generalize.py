@@ -20,7 +20,7 @@ import random
 n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
-n_sd = 2            # standard deviation of injected noise
+n_sd = 1            # standard deviation of injected noise
 n_in = 3            # number of inputs
 n_ff = n_neu        # number of neurons in feedforward neural net
 n_out = 2           # number of outputs
@@ -48,7 +48,7 @@ def seed_everything(seed):
     for env in tenvs_train: env.reset(seed=seed)
 
 n_tasks = np.array([48])
-n_batch = np.array([2e3])
+n_batch = np.array([5e3])
 
 # Free RT
 #n_tasks = np.array([6,12,24,48])
@@ -66,6 +66,9 @@ n_batch = np.array([2e3])
 #n_tasks = np.array([48])
 #n_batch = np.array([2.2e3])
 # LinCentOutTanh
+#n_tasks = np.array([48])
+#n_batch = np.array([3e3])
+# LinCentOutTanhLR001
 #n_tasks = np.array([48])
 #n_batch = np.array([3e3])
 
@@ -92,7 +95,7 @@ if keep_test_loss_hist:
 else:
     test_loss_hist = np.zeros((np.size(n_tasks),4,n_runs))
 
-# Baseline for R^2
+# Baseline for r^2
 x = np.random.rand(100000) - .5
 var = np.var(x)
 
@@ -106,7 +109,7 @@ for n, n_task in enumerate(n_tasks):
     
     # Load network
     data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-    net_file = 'LinCentOutTanhSL64batch1e5LR0.001Noise2nTrial1nTask' + str(n_task)
+    net_file = 'MultFull64batch2e4Noise1nTask' + str(n_task)
     
     net = RNN(n_in,n_neu,n_task,n_sd,activation,tau,dt)
     checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -115,7 +118,7 @@ for n, n_task in enumerate(n_tasks):
     # Feedforward neural network that learns multiplication
     
     ff_net = nn.Sequential(
-            nn.Linear(n_ff,n_out)
+            nn.Linear(48,n_out)
             #nn.Sigmoid(),
             #nn.Linear(n_ff,n_out)
             )
@@ -299,7 +302,7 @@ ax.errorbar(n_tasks*off_p,perc[1],yerr=[perc[1]-perc[0],perc[2]-perc[1]],linesty
 #ax.scatter(n_tasks_free*off_m,perc_free[1],color='firebrick',label='Free')
 #ax.errorbar(n_tasks_free*off_m,perc_free[1],yerr=[perc_free[1]-perc_free[0],
 #                    perc_free[2]-perc_free[1]],linestyle='',color='firebrick')
-ax.set_ylabel('Out-of-sample $R^2$')
+ax.set_ylabel('Out-of-sample $r^2$')
 ax.set_xlabel('# of tasks')
 ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
@@ -362,5 +365,4 @@ for n, n_task in enumerate(n_tasks):
     plt.ylim([0,.1])
     plt.legend(prop={'size': SMALL_SIZE},frameon=False,ncol=1)
     #plt.savefig('loss.png',bbox_inches='tight',format='png',dpi=300)
-    #plt.savefig('loss.eps',bbox_inches='tight',format='eps',dpi=300)
     plt.show()

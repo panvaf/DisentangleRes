@@ -41,10 +41,11 @@ n_task = 48         # number of tasks
 n_trial = 40        # number of bulk example trials to plot
 n_exam = 5         # number of example points to plot with separate colors
 thres = 5           # DDM boundary
+n_sweep = 8         # Number of stimuli values to sweep
 activation = 'relu'
 
 # Tasks
-task = {"LinearClassificationCentOut":tasks.LinearClassificationCentOut}
+task = {"MultiplyClassificationFull":tasks.MultiplyClassificationFull}
 #task_rules = util.assign_task_rules(task)
 task_num = len(task)
 
@@ -56,12 +57,12 @@ timing = {'fixation': 100,
 
 t_task = int(sum(timing.values())/dt)
 
-#thres = np.array([0.005, 0.01, 0.018, 0.027, 0.04, 0.052, 0.07, 0.085, 0.105, 0.125, 0.15, 0.18])
+thres = np.array([0.005, 0.01, 0.018, 0.027, 0.04, 0.052, 0.07, 0.085, 0.105, 0.125, 0.15, 0.18])
 tenvs = [value(timing=timing,sigma=0,n_task=n_task,thres=thres) for key, value in task.items()]
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinCentOutTanhSL64batch1e5Noise2nTrial1nTask' + str(n_task) + 'run1'
+net_file = 'LinCentOutTanhSL64batch1e5LR0.001Noise2nTrial1nTask' + str(n_task) + 'run1'
 
 net = RNN(n_in,n_neu,n_task,0,activation,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -284,7 +285,7 @@ plt.show()
 fig, ax = plt.subplots(figsize=(1,1))
 
 pos = .25
-width = pos/2
+width = pos*2
 locs = [[(-pos,-pos),(pos,-pos)],[(-pos,pos),(pos,pos)]]
 for k in range(2):
     for l in range(2):
@@ -309,4 +310,45 @@ ax.yaxis.set_major_locator(MultipleLocator(.5))
 ax.set_xticklabels([])
 ax.set_yticklabels([])
 #plt.savefig('quad_colors.png',bbox_inches='tight',format='png',dpi=300)
+#plt.savefig('quad_colors.eps',bbox_inches='tight',format='eps',dpi=300)
+plt.show()
+
+# Steady-state firing rates raster plot
+
+ss_fr = np.zeros((n_sweep,n_sweep,n_neu))
+x1s = np.linspace(-.5,.5,n_sweep)
+x2s = np.linspace(-.5,.5,n_sweep)
+
+for i, x1 in enumerate(x1s):
+    for j, x2 in enumerate(x2s):
+        
+        # Construct inputs
+        inp = np.tile([1, x1, x2],(1, int(timing['stimulus']/100), 1)) if n_in == 3 else np.tile([x1, x2],(1, int(timing['stimulus']/100), 1))
+        inp = torch.tensor(inp, dtype=torch.float32)
+        
+        _, rnn_activity = net(inp)
+        ss_fr[i,j] = rnn_activity[0, -1, :].detach().numpy()
+        
+ss_fr = np.reshape(ss_fr,(n_sweep,n_sweep,int(np.sqrt(n_neu)),int(np.sqrt(n_neu))))
+
+# Plot
+fig, axes = plt.subplots(8, 8, figsize=(8, 8))
+
+for i in range(n_sweep):
+    for j in range(n_sweep):
+        ax = axes[i, j]
+        im = ax.imshow(ss_fr[i,j], cmap='Greys')
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+# Create a common colorbar
+cax = fig.add_axes([0.92, 0.15, 0.02, 0.7])  # [x, y, width, height]
+cbar = plt.colorbar(im, cax=cax)
+cbar.set_label('Firing rate (spikes/s)')
+
+# Common axis labels
+fig.text(0.5, 0.08, '$x_1$', ha='center')
+fig.text(0.08, 0.5, '$x_2$', va='center', rotation='vertical')
+
+# Display the plots
 plt.show()
