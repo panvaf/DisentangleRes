@@ -15,8 +15,9 @@ import os
 from pathlib import Path
 
 # Tasks
-task = {"LinearClassificationCentOut":tasks.LinearClassificationCentOut}
-#task_rules = util.assign_task_rules(task)
+task = {"TwoAlternativeForcedChoiceCent":tasks.TwoAlternativeForcedChoiceCent,
+        "AttributeIntegrationCent":tasks.AttributeIntegrationCent}
+task_rules = util.assign_task_rules(task)
 task_num = len(task)
 
 # Constants
@@ -27,7 +28,7 @@ dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
 print_every = int(n_batch/100)
-n_out = 48          # number of outputs per task
+n_out = 1          # number of outputs per task
 bal_err = False     # whether to balance penalization of decision vs. integration
 pen_end = False     # only penalize final time point
 trial_num = 1       # number of trials drawn in a row
@@ -35,7 +36,7 @@ rand_pen = False    # randomly penalize a certain time point in the trial
 bound = 5           # DDM boundary
 activation = 'relu' # activation function
 lr = 1e-3           # Learning rate
-run = 1
+run = 0
 
 # Environment
 timing = {'fixation': 100,
@@ -51,7 +52,7 @@ n_grace = int(grace/dt); n_decision = int(timing['decision']/dt); n_trial = int(
 
 # Save location
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
+net_file = 'ContextDependent' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
             (activation if activation != 'relu' else '') + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
             (('LR' + str(lr)) if lr != 3e-3 else '')  + \
@@ -64,7 +65,7 @@ net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound !=
             ('PenEnd' if pen_end else '') + (('run' + str(run)) if run != 0 else '')
      
 # Make supervised datasets
-tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out,thres=bound) for key, value in task.items()]
+tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out,thres=bound,rule_vec=task_rules[key]) for key, value in task.items()]
 #tenvs = ['PerceptualDecisionMaking-v0']
 #kwargs = {'dt': 100, 'sigma': 1}
 

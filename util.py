@@ -67,7 +67,8 @@ class rot_3D_plot():
         self.n_in = n_in
         
         self.t_task = activity[0].shape[0]
-        self.n_task = trial_info[0]['ground_truth'].shape[-1]
+        if n_in<=3:
+            self.n_task = trial_info[0]['ground_truth'].shape[-1]
         
         # Constants
         self.x_eye = 0
@@ -75,14 +76,18 @@ class rot_3D_plot():
         self.z_eye = 1
         
         # Colors
-        self.colors = self.get_colors(colors)
+        if colors is not None:
+            self.colors = self.get_colors(colors)
+            self.lines = True
+        else:
+            self.lines = False
+            self.individual_examples = False
         
     # Get the colors for the final dot in the scatterplot
     def get_colors(self,colors):
         
         if isinstance(colors[0],list):
-            self.marker = 'square'; self.mark_sz = 5; self.width = 2
-            self.opacity = 1; self.individual_examples = False
+            self.individual_examples = False
             
             col = []
             
@@ -105,7 +110,7 @@ class rot_3D_plot():
                     if self.n_in==3:
                         k = 1 if trial['ground_truth'][0] > 0 else 0
                         l = 1 if trial['ground_truth'][int(self.n_task/2)] > 0 else 0
-                    else:
+                    elif self.n_in==2:
                         k = 1 if trial['ground_truth'][-1][0] > 0 else 0
                         l = 1 if trial['ground_truth'][-1][int(self.n_task/2)] > 0 else 0
                     quad_col = colors[k][l]
@@ -114,14 +119,16 @@ class rot_3D_plot():
             
         else:
             col = colors
-            self.marker = 'circle'; self.mark_sz = 7; self.width = 3
-            self.opacity = 0.4; self.individual_examples = True
+            self.individual_examples = True
             
         return col
     
     
     # Create plot
     def plot(self):
+        
+        # Configure plotting parameters
+        self.plot_params()
         
         fig = go.Figure()
         
@@ -134,20 +141,25 @@ class rot_3D_plot():
             else:
                 line_col = 'darkblue'
             
-            fig.add_traces(go.Scatter3d(x=activity_pc[:, 0],y=activity_pc[:, 1],
-                       z=activity_pc[:, 2],marker=dict(size=3,color=np.arange(self.t_task),
-                       colorscale='blues',symbol='circle'),line=dict(color=line_col,width=self.width)))
-            if self.colors[i]:
-                fig.add_traces(go.Scatter3d(x=np.array(activity_pc[-1, 0]),y=np.array(activity_pc[-1, 1]),
-                       z=np.array(activity_pc[-1, 2]),marker=dict(size=self.mark_sz,color=self.colors[i],symbol=self.marker),
-                       line=dict(color='darkblue',width=self.width)))
+            if self.lines:
+                fig.add_traces(go.Scatter3d(x=activity_pc[:, 0],y=activity_pc[:, 1],
+                           z=activity_pc[:, 2],marker=dict(size=3,color=np.arange(self.t_task),
+                           colorscale='blues',symbol='circle'),line=dict(color=line_col,width=self.width)))
+                if self.colors[i]:
+                    fig.add_traces(go.Scatter3d(x=np.array(activity_pc[-1, 0]),y=np.array(activity_pc[-1, 1]),
+                           z=np.array(activity_pc[-1, 2]),marker=dict(size=self.mark_sz,color=self.colors[i],symbol=self.marker),
+                           line=dict(color='darkblue',width=self.width)))
+            else:
+                fig.add_traces(go.Scatter3d(x=activity_pc[:-1, 0],y=activity_pc[:-1, 1],
+                           z=activity_pc[:-1, 2],marker=dict(size=3,color=np.arange(self.t_task),
+                           colorscale='blues',symbol='circle'),mode='markers'))
                 
         # Fixed points are shown in cross
-        cols = ['firebrick','yellow']
+        cols = ['firebrick','darkorange']
         for i in range(self.fixedpoints.shape[1]):
             fixedpoints_pc = self.pca.transform(self.fixedpoints[:,i])
             fig.add_traces(go.Scatter3d(x=fixedpoints_pc[:, 0],y=fixedpoints_pc[:, 1],
-                      z=fixedpoints_pc[:, 2],marker=dict(size=2,color=cols[0],symbol='x'),
+                      z=fixedpoints_pc[:, 2],marker=dict(size=2,color=cols[i],symbol='x'),
                       mode='markers',opacity=self.opacity))
             
         
@@ -217,6 +229,16 @@ class rot_3D_plot():
         w = self.x_eye+1j*self.y_eye
         return np.real(np.exp(1j*theta)*w), np.imag(np.exp(1j*theta)*w), self.z_eye
     
+    
+    # Set plotting parameters
+    def plot_params(self):
+        
+        if self.individual_examples:
+            self.marker = 'circle'; self.mark_sz = 7; self.width = 3
+            self.opacity = 0.4
+        else:
+            self.marker = 'square'; self.mark_sz = 5; self.width = 2
+            self.opacity = 1
     
 # Correlation coeffient between different matrices
 

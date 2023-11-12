@@ -36,8 +36,8 @@ n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
-n_in = 3            # number of inputs
-n_task = 48         # number of tasks
+n_in = 5            # number of inputs
+n_task = 1         # number of tasks
 n_trial = 40        # number of bulk example trials to plot
 n_exam = 5         # number of example points to plot with separate colors
 thres = 5           # DDM boundary
@@ -45,8 +45,9 @@ n_sweep = 8         # Number of stimuli values to sweep
 activation = 'relu'
 
 # Tasks
-task = {"LinearClassificationCentOut":tasks.LinearClassificationCentOut}
-#task_rules = util.assign_task_rules(task)
+task = {"TwoAlternativeForcedChoiceCent":tasks.TwoAlternativeForcedChoiceCent,
+        "AttributeIntegrationCent":tasks.AttributeIntegrationCent}
+task_rules = util.assign_task_rules(task)
 task_num = len(task)
 
 # Environment
@@ -58,13 +59,14 @@ timing = {'fixation': 100,
 t_task = int(sum(timing.values())/dt)
 
 #thres = np.array([0.005, 0.01, 0.018, 0.027, 0.04, 0.052, 0.07, 0.085, 0.105, 0.125, 0.15, 0.18])
-tenvs = [value(timing=timing,sigma=0,n_task=n_task,thres=thres) for key, value in task.items()]
+tenvs = [value(timing=timing,sigma=0,n_task=n_task,thres=thres,rule_vec=task_rules[key]) for key, value in task.items()]
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinCentOutTanhSL64batch1e5LR0.001Noise2nTrial1nTask' + str(n_task) + 'run1'
+#net_file = 'Joint64batch1e3'
+net_file = 'ContextDependent64batch1e5LR0.001Noise2nTrial1nTask' + str(n_task)
 
-net = RNN(n_in,n_neu,n_task,0,activation,tau,dt)
+net = RNN(n_in,n_neu,task_num*n_task,0,activation,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
 net.load_state_dict(checkpoint['state_dict'])
 net.eval()
@@ -110,13 +112,18 @@ for param in net.parameters():
     param.requires_grad = False
 
 batch_size = 128
-fixedpoints = np.empty([batch_size,1,n_neu])
+fixedpoints = np.empty([batch_size,task_num,n_neu])
 
-for j in range(1):
+for j in range(task_num):
     print('Task {} out of {}'.format(j+1,task_num))
 
     # Inputs are zero, so that internal representation is not affected
-    inp = np.tile([1, 0, 0],(batch_size, 1)) if n_in == 3 else np.tile([0, 0],(batch_size, 1))
+    if n_in>3:
+        inp = np.tile(np.concatenate(([1, 0, 0],list(task_rules.values())[j])),(batch_size, 1))
+    elif n_in==3:    
+        inp = np.tile([1, 0, 0],(batch_size, 1))
+    elif n_in==2:
+        inp = np.tile([0, 0],(batch_size, 1)) 
     inp = torch.tensor(inp, dtype=torch.float32)
     
     # Initialize hidden activity                                                                    
@@ -152,7 +159,7 @@ for j in range(1):
     fixedpoints[:,j] = fxdpoints
 
 # Obtain individual simulations to plot and compare location of trajectories
-tenvs = [value(timing=timing,sigma=n_sd,n_task=n_task, thres=thres) for key, value in task.items()]
+tenvs = [value(timing=timing,sigma=n_sd,n_task=n_task,thres=thres,rule_vec=task_rules[key]) for key, value in task.items()]
 
 datasets = [ngym.Dataset(tenv,batch_size=1,seq_len=t_task) for tenv in tenvs]
 
@@ -359,6 +366,7 @@ fig.text(0.5, 0.08, '$x_1$', ha='center')
 fig.text(0.08, 0.5, '$x_2$', va='center', rotation='vertical')
 
 plt.show()
+
 
 # Plot correlations
 
