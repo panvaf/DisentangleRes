@@ -13,6 +13,7 @@ import numpy as np
 from random import randint
 import os
 from pathlib import Path
+import time
 
 # Tasks
 task = {"LinearClassificationCentOut":tasks.LinearClassificationCentOut}
@@ -112,6 +113,8 @@ opt.add_param_group({'params': ff_net.parameters()})
 total_loss = 0; k = 0
 loss_hist = np.zeros(100)
 
+start_time = time.time()
+
 for i in range(int(n_batch)):
     # Randomly pick task
     task = randint(0,task_num-1)
@@ -169,3 +172,9 @@ for i in range(int(n_batch)):
 # Save network
 torch.save({'state_dict': net.state_dict(),'loss_hist': loss_hist},
                     data_path + net_file + '.pth')
+
+end_time = time.time()
+elapsed_time = end_time - start_time
+hours, minutes, seconds = util.convert_seconds(elapsed_time)
+
+print(f"Elapsed time: {hours} hours, {minutes} minutes, and {seconds} seconds.")
