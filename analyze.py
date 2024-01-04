@@ -36,17 +36,17 @@ n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
-n_in = 5            # number of inputs
-n_task = 1         # number of tasks
+n_in = 3            # number of inputs
+n_task = 48         # number of tasks
 n_trial = 40        # number of bulk example trials to plot
 n_exam = 5         # number of example points to plot with separate colors
 thres = 5           # DDM boundary
 n_sweep = 8         # Number of stimuli values to sweep
 activation = 'relu'
+run = 1
 
 # Tasks
-task = {"TwoAlternativeForcedChoiceCent":tasks.TwoAlternativeForcedChoiceCent,
-        "AttributeIntegrationCent":tasks.AttributeIntegrationCent}
+task = {"LinearClassificationCentOut":tasks.LinearClassificationCentOut}
 task_rules = util.assign_task_rules(task)
 task_num = len(task)
 
@@ -64,7 +64,7 @@ tenvs = [value(timing=timing,sigma=0,n_task=n_task,thres=thres,rule_vec=task_rul
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
 #net_file = 'Joint64batch1e3'
-net_file = 'ContextDependent64batch1e5LR0.001Noise2nTrial1nTask' + str(n_task)
+net_file = 'LinCentOutTanhSL64batch1e5LR0.001Noise2nTrial1nTask' + str(n_task) + (('run' + str(run)) if run != 0 else '')
 
 net = RNN(n_in,n_neu,task_num*n_task,0,activation,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -365,6 +365,8 @@ cbar.set_label('Firing rate (spikes/s)')
 fig.text(0.5, 0.08, '$x_1$', ha='center')
 fig.text(0.08, 0.5, '$x_2$', va='center', rotation='vertical')
 
+#plt.savefig('activ.png',bbox_inches='tight',format='png',dpi=300)
+#plt.savefig('activ.eps',bbox_inches='tight',format='eps',dpi=300)
 plt.show()
 
 
@@ -386,5 +388,8 @@ axes[1].set_yticks([])
 cax = fig.add_axes([0.92, 0.15, 0.02, 0.7])  # [x, y, width, height]
 cbar = plt.colorbar(im1, cax=cax)
 cbar.set_label('Correlation coefficient')
+
+#plt.savefig('corr.png',bbox_inches='tight',format='png',dpi=300)
+#plt.savefig('corr.eps',bbox_inches='tight',format='eps',dpi=300)
 
 plt.show()

@@ -253,3 +253,12 @@ def corr2_coeff(A, B):
 
     # Finally get corr coeff
     return np.dot(A_mA, B_mB.T) / np.sqrt(np.dot(ssA[:, None],ssB[None]))
+
+
+# Convert time to hours, minutes, seconds from seconds
+
+def convert_seconds(seconds):
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    seconds = seconds % 60
+    return hours, minutes, seconds

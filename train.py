@@ -15,8 +15,7 @@ import os
 from pathlib import Path
 
 # Tasks
-task = {"TwoAlternativeForcedChoiceCent":tasks.TwoAlternativeForcedChoiceCent,
-        "AttributeIntegrationCent":tasks.AttributeIntegrationCent}
+task = {"LinearClassificationCentOut":tasks.LinearClassificationCentOut}
 task_rules = util.assign_task_rules(task)
 task_num = len(task)
 
@@ -28,7 +27,7 @@ dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
 print_every = int(n_batch/100)
-n_out = 1          # number of outputs per task
+n_out = 48          # number of outputs per task
 bal_err = False     # whether to balance penalization of decision vs. integration
 pen_end = False     # only penalize final time point
 trial_num = 1       # number of trials drawn in a row
@@ -52,7 +51,7 @@ n_grace = int(grace/dt); n_decision = int(timing['decision']/dt); n_trial = int(
 
 # Save location
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'ContextDependent' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
+net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
             (activation if activation != 'relu' else '') + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
             (('LR' + str(lr)) if lr != 3e-3 else '')  + \
@@ -63,7 +62,7 @@ net_file = 'ContextDependent' + str(n_neu) + (('Bound' + str(bound)) if bound !=
             (('Delay' + str(timing['delay'])) if timing['delay'] != 0 else '')  + \
             ('BalErr' if bal_err else '') + ('RandPen' if rand_pen else '') + \
             ('PenEnd' if pen_end else '') + (('run' + str(run)) if run != 0 else '')
-     
+
 # Make supervised datasets
 tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out,thres=bound,rule_vec=task_rules[key]) for key, value in task.items()]
 #tenvs = ['PerceptualDecisionMaking-v0']

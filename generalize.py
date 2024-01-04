@@ -15,12 +15,15 @@ from random import randint
 import util
 import matplotlib.pyplot as plt
 import random
+import time
+
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 # Parameters
 n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
-n_sd = 1            # standard deviation of injected noise
+n_sd = 2            # standard deviation of injected noise
 n_in = 3            # number of inputs
 n_ff = n_neu        # number of neurons in feedforward neural net
 n_out = 2           # number of outputs
@@ -29,7 +32,7 @@ n_test = 40        # number of test batches
 trial_sz = 1        # draw multiple trials in a row
 n_runs = 10         # number of runs for each quadrant
 out_of_sample = True
-keep_test_loss_hist = True
+keep_test_loss_hist = False
 activation = 'relu'
 
 # Reproducibility
@@ -48,7 +51,7 @@ def seed_everything(seed):
     for env in tenvs_train: env.reset(seed=seed)
 
 n_tasks = np.array([48])
-n_batch = np.array([5e3])
+n_batch = np.array([3e3])
 
 # Free RT
 #n_tasks = np.array([6,12,24,48])
@@ -101,6 +104,8 @@ var = np.var(x)
 
 # Begin!
 
+start_time = time.time()
+
 for n, n_task in enumerate(n_tasks):
     
     print('Network trained on {} tasks'.format(n_task))
@@ -109,7 +114,7 @@ for n, n_task in enumerate(n_tasks):
     
     # Load network
     data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-    net_file = 'MultFull64batch2e4Noise1nTask' + str(n_task)
+    net_file = 'LinCentOutTanhSL64batch1e5LR0.001Noise2nTrial1nTask' + str(n_task)
     
     net = RNN(n_in,n_neu,n_task,n_sd,activation,tau,dt)
     checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -118,7 +123,7 @@ for n, n_task in enumerate(n_tasks):
     # Feedforward neural network that learns multiplication
     
     ff_net = nn.Sequential(
-            nn.Linear(48,n_out)
+            nn.Linear(n_neu,n_out)
             #nn.Sigmoid(),
             #nn.Linear(n_ff,n_out)
             )
@@ -366,3 +371,9 @@ for n, n_task in enumerate(n_tasks):
     plt.legend(prop={'size': SMALL_SIZE},frameon=False,ncol=1)
     #plt.savefig('loss.png',bbox_inches='tight',format='png',dpi=300)
     plt.show()
+
+end_time = time.time()
+elapsed_time = end_time - start_time
+hours, minutes, seconds = util.convert_seconds(elapsed_time)
+
+print(f"Elapsed time: {hours} hours, {minutes} minutes, and {seconds} seconds.")
