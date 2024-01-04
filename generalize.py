@@ -30,7 +30,7 @@ n_out = 2           # number of outputs
 batch_sz = 16       # batch size
 n_test = 40        # number of test batches
 trial_sz = 1        # draw multiple trials in a row
-n_runs = 10         # number of runs for each quadrant
+n_runs = 5         # number of runs for each quadrant
 out_of_sample = True
 keep_test_loss_hist = False
 activation = 'relu'
@@ -51,7 +51,7 @@ def seed_everything(seed):
     for env in tenvs_train: env.reset(seed=seed)
 
 n_tasks = np.array([48])
-n_batch = np.array([3e3])
+n_batch = np.array([2.8e3])
 
 # Free RT
 #n_tasks = np.array([6,12,24,48])
@@ -97,6 +97,10 @@ if keep_test_loss_hist:
     test_loss_hist = np.zeros((np.size(n_tasks),4,n_runs,100))
 else:
     test_loss_hist = np.zeros((np.size(n_tasks),4,n_runs))
+    
+# Device
+
+device = util.get_device()
 
 # Baseline for r^2
 x = np.random.rand(100000) - .5
@@ -106,175 +110,177 @@ var = np.var(x)
 
 start_time = time.time()
 
-for n, n_task in enumerate(n_tasks):
-    
-    print('Network trained on {} tasks'.format(n_task))
-    
-    print_every = int(n_batch[n]/100)
-    
-    # Load network
-    data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-    net_file = 'LinCentOutTanhSL64batch1e5LR0.001Noise2nTrial1nTask' + str(n_task)
-    
-    net = RNN(n_in,n_neu,n_task,n_sd,activation,tau,dt)
-    checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
-    net.load_state_dict(checkpoint['state_dict'])
-    
-    # Feedforward neural network that learns multiplication
-    
-    ff_net = nn.Sequential(
-            nn.Linear(n_neu,n_out)
-            #nn.Sigmoid(),
-            #nn.Linear(n_ff,n_out)
-            )
-    
-    # Train feedforward neural net only
-    net.eval()
-    for param in net.parameters():
-        param.requires_grad = False
-    
-    quads = np.array([1,2,3,4])
-    
-    # Choose a quadrant for test
-    for q, quad_test in enumerate(quads):
+with device:
+
+    for n, n_task in enumerate(n_tasks):
         
-        for run in range(n_runs):
+        print('Network trained on {} tasks'.format(n_task))
+        
+        print_every = int(n_batch[n]/100)
+        
+        # Load network
+        data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
+        net_file = 'LinCentOutTanhSL64batch1e5LR0.001Noise2nTrial1nTask' + str(n_task) + 'run2'
+        
+        net = RNN(n_in,n_neu,n_task,n_sd,activation,tau,dt)
+        checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
+        net.load_state_dict(checkpoint['state_dict'])
+        
+        # Feedforward neural network that learns multiplication
+        
+        ff_net = nn.Sequential(
+                nn.Linear(n_neu,n_out)
+                #nn.Sigmoid(),
+                #nn.Linear(n_ff,n_out)
+                )
+        
+        # Train feedforward neural net only
+        net.eval()
+        for param in net.parameters():
+            param.requires_grad = False
+        
+        quads = np.array([1,2,3,4])
+        
+        # Choose a quadrant for test
+        for q, quad_test in enumerate(quads):
             
-            errors = []
-            
-            # Training set
-            if out_of_sample:
-                quad_train = np.setdiff1d(quads,quad_test)
-            else:
-                quad_train = quads
-            
-            print("Run {} of {} for quadrant {}".format(run+1,n_runs,quad_test))
-            
-            # Environments
-            tenvs_train = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=quad_train) for key, value in task.items()]
-            tenvs_test = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=quad_test) for key, value in task.items()]
-            
-            # Seed
-            seed_everything(seed)
-            
-            # Datasets
-            datasets_train = [ngym.Dataset(tenv,batch_size=batch_sz,
-                             seq_len=trial_sz*t_task) for tenv in tenvs_train]
-            datasets_test = [ngym.Dataset(tenv,batch_size=batch_sz,
-                             seq_len=trial_sz*t_task) for tenv in tenvs_test]
-            
-            # Reset parameters of decoder for each run
-            for layer in ff_net.children():
-               if hasattr(layer, 'reset_parameters'):
-                   layer.reset_parameters()
-                        
-            # Optimizer
-            opt = optim.Adam(ff_net.parameters(), lr=0.003)
-            
-            # Train decoder
-            ff_net.train()
-            train_loss = 0; t = 0
-            
-            for i in range(int(n_batch[n])):
-                # Randomly pick task
-                dataset = datasets_train[randint(0,task_num-1)]
-                # Generate data for current batch
-                inputs, target = dataset()
+            for run in range(n_runs):
                 
-                # Reshape so that batch is first dimension
-                inputs = np.transpose(inputs,(1,0,2))[:,:,-n_in:]
-                target = np.transpose(target,(1,0,2))
+                errors = []
                 
-                # Turn into tensors
-                inputs = torch.from_numpy(inputs).type(torch.float)
-                target = torch.from_numpy(target).type(torch.float)
+                # Training set
+                if out_of_sample:
+                    quad_train = np.setdiff1d(quads,quad_test)
+                else:
+                    quad_train = quads
                 
-                # Empty gradient buffers
-                opt.zero_grad()
+                print("Run {} of {} for quadrant {}".format(run+1,n_runs,quad_test))
                 
-                # Forward run
-                net_out, fr = net(inputs)
-                output = ff_net(fr)
+                # Environments
+                tenvs_train = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=quad_train) for key, value in task.items()]
+                tenvs_test = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=quad_test) for key, value in task.items()]
                 
-                # Compute loss
-                loss, _ = util.MSELoss_weighted(output[:,outputs,:], target[:,outputs,:], 1)
-                train_loss += loss.item()
+                # Seed
+                seed_everything(seed)
                 
-                # Backpopagate loss
-                loss.backward()
+                # Datasets
+                datasets_train = [ngym.Dataset(tenv,batch_size=batch_sz,
+                                 seq_len=trial_sz*t_task) for tenv in tenvs_train]
+                datasets_test = [ngym.Dataset(tenv,batch_size=batch_sz,
+                                 seq_len=trial_sz*t_task) for tenv in tenvs_test]
                 
-                # Update weights
-                opt.step()
+                # Reset parameters of decoder for each run
+                for layer in ff_net.children():
+                   if hasattr(layer, 'reset_parameters'):
+                       layer.reset_parameters()
+                            
+                # Optimizer
+                opt = optim.Adam(ff_net.parameters(), lr=0.003)
                 
-                # Store history of average training loss
-                if (i % print_every == 0):
-                    train_loss /= print_every
-                    print('{} % of the simulation complete'.format(round(i/n_batch[n]*100)))
-                    print('Train loss {:0.3f}'.format(train_loss))
-                    train_loss_hist[n,q,run,t] = train_loss
+                # Train decoder
+                ff_net.train()
+                train_loss = 0; t = 0
+                
+                for i in range(int(n_batch[n])):
+                    # Randomly pick task
+                    dataset = datasets_train[randint(0,task_num-1)]
+                    # Generate data for current batch
+                    inputs, target = dataset()
                     
-                    # Keep track of test loss history
-                    if keep_test_loss_hist or round(i/n_batch[n]*100) == 99:
+                    # Reshape so that batch is first dimension
+                    inputs = np.transpose(inputs,(1,0,2))[:,:,-n_in:]
+                    target = np.transpose(target,(1,0,2))
+                    
+                    # Turn into tensors
+                    inputs = torch.from_numpy(inputs).type(torch.float)
+                    target = torch.from_numpy(target).type(torch.float)
+                    
+                    # Empty gradient buffers
+                    opt.zero_grad()
+                    
+                    # Forward run
+                    net_out, fr = net(inputs)
+                    output = ff_net(fr)
+                    
+                    # Compute loss
+                    loss, _ = util.MSELoss_weighted(output[:,outputs,:], target[:,outputs,:], 1)
+                    train_loss += loss.item()
+                    
+                    # Backpopagate loss
+                    loss.backward()
+                    
+                    # Update weights
+                    opt.step()
+                    
+                    # Store history of average training loss
+                    if (i % print_every == 0):
+                        train_loss /= print_every
+                        print('{} % of the simulation complete'.format(round(i/n_batch[n]*100)))
+                        print('Train loss {:0.3f}'.format(train_loss))
+                        train_loss_hist[n,q,run,t] = train_loss
                         
-                        # Make sure weights are frozen
-                        ff_net.eval()
-                        
-                        with torch.no_grad():
+                        # Keep track of test loss history
+                        if keep_test_loss_hist or round(i/n_batch[n]*100) == 99:
                             
+                            # Make sure weights are frozen
+                            ff_net.eval()
+                            
+                            with torch.no_grad():
+                                
+                                test_loss = 0
+                                
+                                for _ in range(n_test):
+                                    dataset = datasets_test[randint(0,task_num-1)]
+                                    # Generate data for current batch
+                                    inputs, target = dataset()
+                                    
+                                    # Reshape so that batch is first dimension
+                                    inputs = np.transpose(inputs,(1,0,2))[:,:,-n_in:]
+                                    target = np.transpose(target,(1,0,2))
+                                    
+                                    # Turn into tensors
+                                    inputs = torch.from_numpy(inputs).type(torch.float)
+                                    target = torch.from_numpy(target).type(torch.float)
+                                    
+                                    # Forward run
+                                    net_out, fr = net(inputs)
+                                    output = ff_net(fr)
+                                    
+                                    # Compute loss
+                                    loss, _ = util.MSELoss_weighted(output[:,outputs,:], target[:,outputs,:], 1)
+                                    test_loss += loss.item()
+                                    
+                            test_loss /= n_test
+                            print('Test loss {:0.3f}'.format(test_loss))
+                                    
+                            # Store loss history
+                            if keep_test_loss_hist:
+                                test_loss_hist[n,q,run,t] = test_loss
+                            else:
+                                test_loss_hist[n,q,run] = test_loss
+                            
+                            # Keep final errors
+                            if round(i/n_batch[n]*100) == 99:
+                                a = output.detach().numpy()
+                                b = target.detach().numpy()
+                                c = b - a
+                                
+                                errors.append(np.reshape(c[:,outputs,:],(-1,n_out)))
+                                
                             test_loss = 0
+                            # Put the network in train mode again
+                            ff_net.train()
                             
-                            for _ in range(n_test):
-                                dataset = datasets_test[randint(0,task_num-1)]
-                                # Generate data for current batch
-                                inputs, target = dataset()
-                                
-                                # Reshape so that batch is first dimension
-                                inputs = np.transpose(inputs,(1,0,2))[:,:,-n_in:]
-                                target = np.transpose(target,(1,0,2))
-                                
-                                # Turn into tensors
-                                inputs = torch.from_numpy(inputs).type(torch.float)
-                                target = torch.from_numpy(target).type(torch.float)
-                                
-                                # Forward run
-                                net_out, fr = net(inputs)
-                                output = ff_net(fr)
-                                
-                                # Compute loss
-                                loss, _ = util.MSELoss_weighted(output[:,outputs,:], target[:,outputs,:], 1)
-                                test_loss += loss.item()
-                                
-                        test_loss /= n_test
-                        print('Test loss {:0.3f}'.format(test_loss))
-                                
-                        # Store loss history
-                        if keep_test_loss_hist:
-                            test_loss_hist[n,q,run,t] = test_loss
-                        else:
-                            test_loss_hist[n,q,run] = test_loss
-                        
-                        # Keep final errors
-                        if round(i/n_batch[n]*100) == 99:
-                            a = output.detach().numpy()
-                            b = target.detach().numpy()
-                            c = b - a
-                            
-                            errors.append(np.reshape(c[:,outputs,:],(-1,n_out)))
-                            
-                        test_loss = 0
-                        # Put the network in train mode again
-                        ff_net.train()
-                        
-                    train_loss = 0; t += 1
-                
-            errors = np.reshape(np.asarray(errors),(-1,n_out))
-            err = np.abs(errors) > .5
-    
-            mse = np.sum(errors**2)/np.size(errors)
-            r_sq[n,q,run] = 1 - mse/var
-    
-            #plt.hist(errors,100)
-            #plt.show()
+                        train_loss = 0; t += 1
+                    
+                errors = np.reshape(np.asarray(errors),(-1,n_out))
+                err = np.abs(errors) > .5
+        
+                mse = np.sum(errors**2)/np.size(errors)
+                r_sq[n,q,run] = 1 - mse/var
+        
+                #plt.hist(errors,100)
+                #plt.show()
 
 # Plot
 

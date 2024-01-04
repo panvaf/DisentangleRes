@@ -15,6 +15,8 @@ import os
 from pathlib import Path
 import time
 
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+
 # Tasks
 task = {"LinearClassificationCentOut":tasks.LinearClassificationCentOut}
 task_rules = util.assign_task_rules(task)
@@ -28,7 +30,7 @@ dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
 print_every = int(n_batch/100)
-n_out = 48          # number of outputs per task
+n_out = 24          # number of outputs per task
 bal_err = False     # whether to balance penalization of decision vs. integration
 pen_end = False     # only penalize final time point
 trial_num = 1       # number of trials drawn in a row
@@ -91,16 +93,20 @@ elif pen_end:
     mask = np.tile(mask,(1,trial_num,1))
 else:
     mask = np.ones((batch_sz,trial_num*t_task,n_out))
+
+
+# Device
+device = util.get_device()
     
 # Initialize RNN  
-net = RNN(n_in,n_neu,n_out*task_num,n_sd,activation,tau,dt)
+net = RNN(n_in,n_neu,n_out*task_num,n_sd,activation,tau,dt).to(device)
 
 # Feedforward NN
 ff_net = nn.Sequential(
         nn.Linear(n_neu,n_out*task_num),
         nn.Tanh()
         #nn.Linear(n_ff,n_out*task_num)
-        )
+        ).to(device)
 
 # Optimizer
 opt = optim.Adam(net.parameters(), lr=lr)
@@ -115,63 +121,65 @@ loss_hist = np.zeros(100)
 
 start_time = time.time()
 
-for i in range(int(n_batch)):
-    # Randomly pick task
-    task = randint(0,task_num-1)
-    dataset = datasets[task]
-    # Generate data for current batch
-    inputs, target = dataset()
+with device:
     
-    # Reshape so that batch is first dimension
-    inputs = np.transpose(inputs,(1,0,2))
-    target = np.transpose(target,(1,0,2))
-    
-    # Construct mask to penalize specific time moment
-    if rand_pen:
-        mask = np.zeros((batch_sz,t_task,n_out))
-        mask[:,np.random.randint(5,t_task),:] = 1
-        mask = np.tile(mask,(1,trial_num,1))
-    
-    # Reshape for multiple tasks
-    masker = np.zeros((batch_sz,trial_num*t_task,n_out*task_num))
-    masker[:,:,task*n_out:(task+1)*n_out] = mask
-    targets = np.zeros((batch_sz,trial_num*t_task,n_out*task_num))
-    targets[:,:,task*n_out:(task+1)*n_out] = target
-    
-    # Turn into tensors
-    inputs = torch.from_numpy(inputs).type(torch.float)
-    targets = torch.from_numpy(targets).type(torch.long)
-    masker = torch.from_numpy(masker).type(torch.long)
-    
-    # Empty gradient buffers
-    opt.zero_grad()
-    
-    # Forward run
-    _, fr = net(inputs)
-    output = ff_net(fr)
-    
-    # Compute loss
-    #loss = criterion(output.view(-1,n_out),target.flatten())
-    _, loss = util.MSELoss_weighted(output, targets, masker)
-    total_loss += loss.item()
-    
-    # Backpopagate loss
-    loss.backward()
-    
-    # Update weights
-    opt.step()
-    
-    # Store history of average training loss
-    if (i % print_every == 0):
-        total_loss /= print_every
-        print('{} % of the simulation complete'.format(round(i/n_batch*100)))
-        print('Loss {:0.3f}'.format(total_loss))
-        loss_hist[k] = total_loss
-        total_loss = 0; k += 1
+    for i in range(int(n_batch)):
+        # Randomly pick task
+        task = randint(0,task_num-1)
+        dataset = datasets[task]
+        # Generate data for current batch
+        inputs, target = dataset()
         
-# Save network
-torch.save({'state_dict': net.state_dict(),'loss_hist': loss_hist},
-                    data_path + net_file + '.pth')
+        # Reshape so that batch is first dimension
+        inputs = np.transpose(inputs,(1,0,2))
+        target = np.transpose(target,(1,0,2))
+        
+        # Construct mask to penalize specific time moment
+        if rand_pen:
+            mask = np.zeros((batch_sz,t_task,n_out))
+            mask[:,np.random.randint(5,t_task),:] = 1
+            mask = np.tile(mask,(1,trial_num,1))
+        
+        # Reshape for multiple tasks
+        masker = np.zeros((batch_sz,trial_num*t_task,n_out*task_num))
+        masker[:,:,task*n_out:(task+1)*n_out] = mask
+        targets = np.zeros((batch_sz,trial_num*t_task,n_out*task_num))
+        targets[:,:,task*n_out:(task+1)*n_out] = target
+        
+        # Turn into tensors
+        inputs = torch.from_numpy(inputs).type(torch.float)
+        targets = torch.from_numpy(targets).type(torch.long)
+        masker = torch.from_numpy(masker).type(torch.long)
+        
+        # Empty gradient buffers
+        opt.zero_grad()
+        
+        # Forward run
+        _, fr = net(inputs)
+        output = ff_net(fr)
+        
+        # Compute loss
+        #loss = criterion(output.view(-1,n_out),target.flatten())
+        _, loss = util.MSELoss_weighted(output, targets, masker)
+        total_loss += loss.item()
+        
+        # Backpopagate loss
+        loss.backward()
+        
+        # Update weights
+        opt.step()
+        
+        # Store history of average training loss
+        if (i % print_every == 0):
+            total_loss /= print_every
+            print('{} % of the simulation complete'.format(round(i/n_batch*100)))
+            print('Loss {:0.3f}'.format(total_loss))
+            loss_hist[k] = total_loss
+            total_loss = 0; k += 1
+            
+    # Save network
+    torch.save({'state_dict': net.state_dict(),'loss_hist': loss_hist},
+                        data_path + net_file + '.pth', _use_new_zipfile_serialization=False)
 
 end_time = time.time()
 elapsed_time = end_time - start_time

@@ -262,3 +262,16 @@ def convert_seconds(seconds):
     minutes = (seconds % 3600) // 60
     seconds = seconds % 60
     return hours, minutes, seconds
+
+# Get device according to availability
+
+def get_device():
+
+    if torch.cuda.is_available():
+        return torch.device('cuda')
+    
+    elif torch.backends.mps.is_available():
+        return torch.device('mps')
+    
+    else:
+        return torch.device('cpu')

@@ -37,13 +37,13 @@ dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd = 2            # standard deviation of injected noise
 n_in = 3            # number of inputs
-n_task = 48         # number of tasks
+n_task = 24         # number of tasks
 n_trial = 40        # number of bulk example trials to plot
 n_exam = 5         # number of example points to plot with separate colors
 thres = 5           # DDM boundary
 n_sweep = 8         # Number of stimuli values to sweep
 activation = 'relu'
-run = 1
+run = 0
 
 # Tasks
 task = {"LinearClassificationCentOut":tasks.LinearClassificationCentOut}
