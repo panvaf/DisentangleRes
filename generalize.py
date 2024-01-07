@@ -257,6 +257,14 @@ with device:
                                         loss, _ = util.MSELoss_weighted(output[:,outputs,:], target[:,outputs,:], 1)
                                         test_loss += loss.item()
                                         
+                                        # Keep final errors
+                                        if round(i/n_batch[n]*100) == 99:
+                                            a = output.detach().numpy()
+                                            b = target.detach().numpy()
+                                            c = b - a
+                                            
+                                            errors.append(np.reshape(c[:,outputs,:],(-1,n_out)))
+                                        
                                 test_loss /= n_test
                                 print('Test loss {:0.3f}'.format(test_loss))
                                         
@@ -265,14 +273,6 @@ with device:
                                     test_loss_hist[n,run,q,fit,t] = test_loss
                                 else:
                                     test_loss_hist[n,run,q,fit] = test_loss
-                                
-                                # Keep final errors
-                                if round(i/n_batch[n]*100) == 99:
-                                    a = output.detach().numpy()
-                                    b = target.detach().numpy()
-                                    c = b - a
-                                    
-                                    errors.append(np.reshape(c[:,outputs,:],(-1,n_out)))
                                     
                                 test_loss = 0
                                 # Put the network in train mode again
