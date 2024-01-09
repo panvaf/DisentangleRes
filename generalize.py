@@ -30,11 +30,11 @@ n_out = 2           # number of outputs
 batch_sz = 16       # batch size
 n_test = 40         # number of test batches
 trial_sz = 1        # draw multiple trials in a row
-n_fit = 3           # number of fits for each quadrant
-n_runs = 2          # number of trained networks for each number of tasks
+n_fit = 5           # number of fits for each quadrant
+n_runs = 5          # number of trained networks for each number of tasks
 out_of_sample = True
 keep_test_loss_hist = False
-save = True
+save = False
 activation = 'relu'
 filename = 'LinCentOutTanhSL64batch1e5LR0.001Noise2nTrial1nTask'
 
@@ -80,6 +80,9 @@ n_batch = np.array([1e3])
 # LinCentOutTanhSL64LR001
 #n_tasks = np.array([2,3,6,12,24,48])
 #n_batch = np.array([1.5e3,2.2e3,2.5e3,2.5e3,2.5e3,2.8e3])
+# LinBoundSL64
+#n_tasks = np.array([2,3,6,12,24,48])
+#n_batch = np.array([1.7e3,2e3,2.2e3,2e3,2.5e3,1.8e3])
 
 # Tasks
 task = {'DenoiseQuads':tasks.DenoiseQuads}
@@ -262,7 +265,7 @@ with device:
                                             a = output.detach().numpy()
                                             b = target.detach().numpy()
                                             c = b - a
-                                            
+
                                             errors.append(np.reshape(c[:,outputs,:],(-1,n_out)))
                                         
                                 test_loss /= n_test
@@ -314,23 +317,23 @@ plt.show()
 perc = np.percentile(r_sq,[25,50,75],axis=(1,2,3))
 offset = 0.1; off_p = 1+offset; off_m = 1-offset 
 
-fig, ax = plt.subplots(figsize=(2,2))
+fig, ax = plt.subplots(figsize=(2.5,2))
 ax.scatter(n_tasks*off_p,perc[1])
 ax.errorbar(n_tasks*off_p,perc[1],yerr=[perc[1]-perc[0],perc[2]-perc[1]],linestyle='')
-#ax.scatter(n_tasks_free*off_m,perc_free[1],color='firebrick',label='Free')
-#ax.errorbar(n_tasks_free*off_m,perc_free[1],yerr=[perc_free[1]-perc_free[0],
+#ax.scatter(n_tasks*off_m,perc_free[1],color='firebrick',label='Free')
+#ax.errorbar(n_tasks*off_m,perc_free[1],yerr=[perc_free[1]-perc_free[0],
 #                    perc_free[2]-perc_free[1]],linestyle='',color='firebrick')
 ax.set_ylabel('Out-of-sample $r^2$')
 ax.set_xlabel('# of tasks')
 ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
-ax.spines['left'].set_position(('data', 1.6))
-ax.spines['bottom'].set_position(('data', -.02))
+ax.spines['left'].set_position(('data', 1.5))
+ax.spines['bottom'].set_position(('data', .18))
 ax.set_xscale("log")
 ax.set_xticks([2,10,50])
 ax.set_xticklabels([2,10,50])
-plt.ylim([0,1])
-plt.legend(frameon=False,ncol=1,bbox_to_anchor=(1.2,.6),title='RT')
+plt.ylim([0.2,1])
+plt.legend(frameon=False,ncol=1,bbox_to_anchor=(1,.4),title='RT')
 #plt.savefig('r_squared.png',bbox_inches='tight',format='png',dpi=300)
 #plt.savefig('r_squared.eps',bbox_inches='tight',format='eps',dpi=300)
 plt.show()
@@ -391,6 +394,6 @@ hours, minutes, seconds = util.convert_seconds(elapsed_time)
 
 # Save
 if save:
-    np.savez('r_squared.npz',train=train_loss_hist,test=test_loss_hist)
+    np.savez('r_squared.npz',r_sq=r_sq,train=train_loss_hist,test=test_loss_hist,n_tasks=n_tasks)
 
 print(f"Elapsed time: {hours} hours, {minutes} minutes, and {seconds} seconds.")
