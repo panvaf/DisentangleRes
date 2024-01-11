@@ -23,7 +23,8 @@ os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
-n_sd = 2            # standard deviation of injected noise
+n_sd_in = 2         # standard deviation of input noise
+n_sd_net = 0        # standard deviation of network noise
 n_in = 3            # number of inputs
 n_ff = n_neu        # number of neurons in feedforward neural net
 n_out = 2           # number of outputs
@@ -132,7 +133,7 @@ with device:
             data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
             net_file = filename + str(n_task) + (('run' + str(run)) if run != 0 else '')
             
-            net = RNN(n_in,n_neu,n_task,n_sd,activation,tau,dt)
+            net = RNN(n_in,n_neu,n_task,n_sd_net,activation,tau,dt)
             checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
             net.load_state_dict(checkpoint['state_dict'])
             
@@ -167,8 +168,8 @@ with device:
                     print("Fit {} of {} for quadrant {}".format(fit+1,n_fit,quad_test))
                     
                     # Environments
-                    tenvs_train = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=quad_train) for key, value in task.items()]
-                    tenvs_test = [value(timing=timing,sigma=n_sd,n_task=n_out,quad_num=quad_test) for key, value in task.items()]
+                    tenvs_train = [value(timing=timing,sigma=n_sd_in,n_task=n_out,quad_num=quad_train) for key, value in task.items()]
+                    tenvs_test = [value(timing=timing,sigma=n_sd_in,n_task=n_out,quad_num=quad_test) for key, value in task.items()]
                     
                     # Seed
                     seed_everything(seed)

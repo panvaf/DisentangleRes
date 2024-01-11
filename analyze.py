@@ -35,11 +35,11 @@ plt.rc('figure', titlesize=MEDIUM_SIZE)   # fontsize of the figure title
 n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
-n_sd = 2            # standard deviation of injected noise
+n_sd_in = 2         # standard deviation of input noise
 n_in = 3            # number of inputs
 n_task = 48         # number of tasks
 n_trial = 40        # number of bulk example trials to plot
-n_exam = 5         # number of example points to plot with separate colors
+n_exam = 5          # number of example points to plot with separate colors
 thres = 5           # DDM boundary
 n_sweep = 8         # Number of stimuli values to sweep
 activation = 'relu'
@@ -159,7 +159,7 @@ for j in range(task_num):
     fixedpoints[:,j] = fxdpoints
 
 # Obtain individual simulations to plot and compare location of trajectories
-tenvs = [value(timing=timing,sigma=n_sd,n_task=n_task,thres=thres,rule_vec=task_rules[key]) for key, value in task.items()]
+tenvs = [value(timing=timing,sigma=n_sd_in,n_task=n_task,thres=thres,rule_vec=task_rules[key]) for key, value in task.items()]
 
 datasets = [ngym.Dataset(tenv,batch_size=1,seq_len=t_task) for tenv in tenvs]
 

@@ -28,7 +28,8 @@ batch_sz = 16       # batch size
 n_batch = 1e5       # number of batches
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
-n_sd = 2            # standard deviation of injected noise
+n_sd_in = 2         # standard deviation of input noise
+n_sd_net = 0        # standard deviation of network noise
 print_every = int(n_batch/100)
 n_out = 48          # number of outputs per task
 bal_err = False     # whether to balance penalization of decision vs. integration
@@ -58,7 +59,8 @@ net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound !=
             (activation if activation != 'relu' else '') + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
             (('LR' + str(lr)) if lr != 3e-3 else '')  + \
-            (('Noise' + str(n_sd)) if n_sd else '') + \
+            (('Noise' + str(n_sd_in)) if n_sd_in else '') + \
+            (('NetN' + str(n_sd_net)) if n_sd_net != 2 else '') + \
             (('tau' + str(tau)) if tau != 100 else '') + \
             (('nTrial' + str(trial_num)) if trial_num != 4 else '')  + \
             (('nTask' + str(n_out)) if n_out != 2 else '')  + \
@@ -67,7 +69,7 @@ net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound !=
             ('PenEnd' if pen_end else '') + (('run' + str(run)) if run != 0 else '')
 
 # Make supervised datasets
-tenvs = [value(timing=timing,sigma=n_sd,n_task=n_out,thres=bound,rule_vec=task_rules[key]) for key, value in task.items()]
+tenvs = [value(timing=timing,sigma=n_sd_in,n_task=n_out,thres=bound,rule_vec=task_rules[key]) for key, value in task.items()]
 #tenvs = ['PerceptualDecisionMaking-v0']
 #kwargs = {'dt': 100, 'sigma': 1}
 
@@ -99,7 +101,7 @@ else:
 device = util.get_device()
     
 # Initialize RNN  
-net = RNN(n_in,n_neu,n_out*task_num,n_sd,activation,tau,dt).to(device)
+net = RNN(n_in,n_neu,n_out*task_num,n_sd_net,activation,tau,dt).to(device)
 
 # Feedforward NN
 ff_net = nn.Sequential(
