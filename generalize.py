@@ -324,7 +324,7 @@ ax.errorbar(n_tasks*off_p,perc[1],yerr=[perc[1]-perc[0],perc[2]-perc[1]],linesty
 #ax.scatter(n_tasks*off_m,perc_free[1],color='firebrick',label='Free')
 #ax.errorbar(n_tasks*off_m,perc_free[1],yerr=[perc_free[1]-perc_free[0],
 #                    perc_free[2]-perc_free[1]],linestyle='',color='firebrick')
-ax.set_ylabel('Out-of-sample $r^2$')
+ax.set_ylabel('Out-of-distribution $r^2$')
 ax.set_xlabel('# of tasks')
 ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)

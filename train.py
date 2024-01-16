@@ -70,15 +70,11 @@ net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound !=
 
 # Make supervised datasets
 tenvs = [value(timing=timing,sigma=n_sd_in,n_task=n_out,thres=bound,rule_vec=task_rules[key]) for key, value in task.items()]
-#tenvs = ['PerceptualDecisionMaking-v0']
-#kwargs = {'dt': 100, 'sigma': 1}
 
 datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_num*t_task) for tenv in tenvs]
 
 # A sample environment from dataset
 env = datasets[0].env
-# Visualize the environment with 2 sample trials
-#_ = ngym.utils.plot_env(env, num_trials=2)
 
 # Network input and output size
 n_in = env.observation_space.shape[0]
@@ -113,9 +109,6 @@ ff_net = nn.Sequential(
 # Optimizer
 opt = optim.Adam(net.parameters(), lr=lr)
 opt.add_param_group({'params': ff_net.parameters()})
-
-# Loss
-#criterion = util.CrossEntropyLoss()
 
 # Train RNN
 total_loss = 0; k = 0
