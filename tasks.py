@@ -7,7 +7,7 @@ import neurogym as ngym
 from neurogym import spaces
 from math import tan
 
-    
+
 class TwoAlternativeForcedChoiceCent(ngym.TrialEnv):
     """Centered alternative forced choice task where two streams of evidence are 
     presented. The participant should decide which stream has provided the 
@@ -475,7 +475,7 @@ class MultiplyClassificationFull(ngym.TrialEnv):
         n_task: number of classification tasks to be solved
     """
 
-    def __init__(self, dt=100, rewards=None, timing=None, sigma=1.0, n_task = 2, thres = None):
+    def __init__(self, dt=100, rewards=None, timing=None, sigma=1.0, n_task = 2, thres = None, **kwargs):
         super().__init__(dt=dt)
         
         self.sigma = sigma / np.sqrt(self.dt)  # Input noise
@@ -548,7 +548,7 @@ class MultiplyClassificationFull(ngym.TrialEnv):
         self.add_randn(0, self.sigma, 'stimulus', where='stimulus')
         
         # Ground truth
-        self.set_groundtruth(ground_truth+1, period='decision')
+        self.set_groundtruth(2*ground_truth-1, period='decision')
 
         return trial
 

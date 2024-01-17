@@ -24,7 +24,7 @@ n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd_in = 2         # standard deviation of input noise
-n_sd_net = 0        # standard deviation of network noise
+n_sd_net = 2        # standard deviation of network noise
 n_in = 3            # number of inputs
 n_ff = n_neu        # number of neurons in feedforward neural net
 n_out = 2           # number of outputs
@@ -34,7 +34,7 @@ trial_sz = 1        # draw multiple trials in a row
 n_fit = 5           # number of fits for each quadrant
 n_runs = 5          # number of trained networks for each number of tasks
 out_of_sample = True
-keep_test_loss_hist = False
+keep_test_loss_hist = True
 save = False
 activation = 'relu'
 filename = 'LinCentOutTanhSL64batch1e5LR0.001Noise2nTrial1nTask'
@@ -55,7 +55,7 @@ def seed_everything(seed):
     for env in tenvs_train: env.reset(seed=seed)
 
 n_tasks = np.array([48])
-n_batch = np.array([1e3])
+n_batch = np.array([5e3])
 
 # Free RT
 #n_tasks = np.array([6,12,24,48])
