@@ -156,37 +156,35 @@ with device:
             # Choose a quadrant for test
             for q, quad_test in enumerate(quads):
                 
+                if out_of_sample:
+                    
+                    if half_split:
+                        quad_test = (np.arange(0,len(quads),2) + quad_test - 1) % len(quads) + 1
+                    
+                    quad_train = np.setdiff1d(quads,quad_test)
+                
+                else:
+                    quad_train = quads
+                    
+                # Environments
+                tenvs_train = [value(timing=timing,sigma=n_sd_in,n_task=n_out,quad_num=quad_train) for key, value in task.items()]
+                tenvs_test = [value(timing=timing,sigma=n_sd_in,n_task=n_out,quad_num=quad_test) for key, value in task.items()]
+                
+                # Seed
+                seed_everything(seed)
+                
+                # Datasets
+                datasets_train = [ngym.Dataset(tenv,batch_size=batch_sz,
+                                 seq_len=trial_sz*t_task) for tenv in tenvs_train]
+                datasets_test = [ngym.Dataset(tenv,batch_size=batch_sz,
+                                 seq_len=trial_sz*t_task) for tenv in tenvs_test]
+                
+                # Perform several fits for statistics
                 for fit in range(n_fit):
                     
                     errors = []
                     
-                    # Training set
-                    if out_of_sample:
-                        
-                        if half_split:
-                            
-                            quad_test = (np.arange(0,len(quads),2) + quad_test - 1) % len(quads) + 1
-                        
-                        quad_train = np.setdiff1d(quads,quad_test)
-                    
-                    else:
-                        
-                        quad_train = quads
-                    
                     print("Fit {} of {} for quadrant {}".format(fit+1,n_fit,quad_test))
-                    
-                    # Environments
-                    tenvs_train = [value(timing=timing,sigma=n_sd_in,n_task=n_out,quad_num=quad_train) for key, value in task.items()]
-                    tenvs_test = [value(timing=timing,sigma=n_sd_in,n_task=n_out,quad_num=quad_test) for key, value in task.items()]
-                    
-                    # Seed
-                    seed_everything(seed)
-                    
-                    # Datasets
-                    datasets_train = [ngym.Dataset(tenv,batch_size=batch_sz,
-                                     seq_len=trial_sz*t_task) for tenv in tenvs_train]
-                    datasets_test = [ngym.Dataset(tenv,batch_size=batch_sz,
-                                     seq_len=trial_sz*t_task) for tenv in tenvs_test]
                     
                     # Reset parameters of decoder for each run
                     for layer in ff_net.children():
