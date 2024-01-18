@@ -33,12 +33,12 @@ n_test = 40         # number of test batches
 trial_sz = 1        # draw multiple trials in a row
 n_fit = 5           # number of fits for each quadrant
 n_runs = 5          # number of trained networks for each number of tasks
-out_of_sample = True
+out_of_distribution = True
 keep_test_loss_hist = True
 save = False
 half_split = False
 activation = 'relu'
-filename = 'LinCentOutTanhSL64batch1e5LR0.001Noise2nTrial1nTask'
+filename = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask'
 
 # Reproducibility
 seed = 42  # 3
@@ -82,9 +82,15 @@ n_batch = np.array([5e3])
 # LinCentOutTanhSL64LR001
 #n_tasks = np.array([2,3,6,12,24,48])
 #n_batch = np.array([1.5e3,2.2e3,2.5e3,2.5e3,2.5e3,2.8e3])
+# LinCentOutTanhSL64LR001NetN0
+#n_tasks = np.array([2,3,6,12,24,48])
+#n_batch = np.array([2e3,1e3,2e3,1.5e3,1.5e3,2e3])
 # LinBoundSL64
 #n_tasks = np.array([2,3,6,12,24,48])
 #n_batch = np.array([1.7e3,2e3,2.2e3,2e3,2.5e3,1.8e3])
+# LinBoundSL64NetN0
+#n_tasks = np.array([2,3,6,12,24,48])
+#n_batch = np.array([1e3,.5e3,3e3,4e3,4e3,5e3])
 
 # Tasks
 task = {'DenoiseQuads':tasks.DenoiseQuads}
@@ -156,7 +162,7 @@ with device:
             # Choose a quadrant for test
             for q, quad_test in enumerate(quads):
                 
-                if out_of_sample:
+                if out_of_distribution:
                     
                     if half_split:
                         quad_test = (np.arange(0,len(quads),2) + quad_test - 1) % len(quads) + 1
