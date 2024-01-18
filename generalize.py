@@ -36,6 +36,7 @@ n_runs = 5          # number of trained networks for each number of tasks
 out_of_sample = True
 keep_test_loss_hist = True
 save = False
+half_split = False
 activation = 'relu'
 filename = 'LinCentOutTanhSL64batch1e5LR0.001Noise2nTrial1nTask'
 
@@ -161,8 +162,15 @@ with device:
                     
                     # Training set
                     if out_of_sample:
+                        
+                        if half_split:
+                            
+                            quad_test = (np.arange(0,len(quads),2) + quad_test - 1) % len(quads) + 1
+                        
                         quad_train = np.setdiff1d(quads,quad_test)
+                    
                     else:
+                        
                         quad_train = quads
                     
                     print("Fit {} of {} for quadrant {}".format(fit+1,n_fit,quad_test))
