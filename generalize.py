@@ -158,7 +158,7 @@ with device:
             for param in net.parameters():
                 param.requires_grad = False
             
-            quads = np.array([1,2,3,4])
+            quads = np.arange(2**n_dim)+1
             
             # Choose a quadrant for test
             for q, quad_test in enumerate(quads):
