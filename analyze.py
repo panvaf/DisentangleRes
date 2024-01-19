@@ -36,7 +36,8 @@ n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd_in = 2         # standard deviation of input noise
-n_in = 3            # number of inputs
+n_dim = 2           # dimensionality of state space
+n_in = n_dim + 1    # number of inputs
 n_task = 48         # number of tasks
 n_trial = 40        # number of bulk example trials to plot
 n_exam = 5          # number of example points to plot with separate colors
@@ -59,7 +60,8 @@ timing = {'fixation': 100,
 t_task = int(sum(timing.values())/dt)
 
 #thres = np.array([0.005, 0.01, 0.018, 0.027, 0.04, 0.052, 0.07, 0.085, 0.105, 0.125, 0.15, 0.18])
-tenvs = [value(timing=timing,sigma=0,n_task=n_task,thres=thres,rule_vec=task_rules[key]) for key, value in task.items()]
+tenvs = [value(timing=timing,sigma=0,n_task=n_task,n_dim=n_dim,thres=thres,
+               rule_vec=task_rules[key]) for key, value in task.items()]
 
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
@@ -123,7 +125,7 @@ for j in range(task_num):
     elif n_in==3:    
         inp = np.tile([1, 0, 0],(batch_size, 1))
     elif n_in==2:
-        inp = np.tile([0, 0],(batch_size, 1)) 
+        inp = np.tile([0, 0],(batch_size, 1))
     inp = torch.tensor(inp, dtype=torch.float32)
     
     # Initialize hidden activity                                                                    
@@ -132,7 +134,7 @@ for j in range(task_num):
     idx_t = np.random.choice(ob.shape[0],batch_size)
     for i in range(batch_size):
         hdn[i] = torch.from_numpy(activity_dict[idx_tr[i]][idx_t[i]])
-    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*15+hdn,
+    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*5+hdn,
                       requires_grad=True, dtype=torch.float32)
     
     # Use Adam optimizer

@@ -29,7 +29,8 @@ n_batch = 1e5       # number of batches
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd_in = 2         # standard deviation of input noise
-n_sd_net = 2        # standard deviation of network noise
+n_sd_net = 0        # standard deviation of network noise
+n_dim = 2           # dimensionality of state space
 print_every = int(n_batch/100)
 n_out = 48          # number of outputs per task
 bal_err = False     # whether to balance penalization of decision vs. integration
@@ -64,12 +65,14 @@ net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound !=
             (('tau' + str(tau)) if tau != 100 else '') + \
             (('nTrial' + str(trial_num)) if trial_num != 4 else '')  + \
             (('nTask' + str(n_out)) if n_out != 2 else '')  + \
+            (('nDim' + str(n_dim)) if n_dim != 2 else '')  + \
             (('Delay' + str(timing['delay'])) if timing['delay'] != 0 else '')  + \
             ('BalErr' if bal_err else '') + ('RandPen' if rand_pen else '') + \
             ('PenEnd' if pen_end else '') + (('run' + str(run)) if run != 0 else '')
 
 # Make supervised datasets
-tenvs = [value(timing=timing,sigma=n_sd_in,n_task=n_out,thres=bound,rule_vec=task_rules[key]) for key, value in task.items()]
+tenvs = [value(timing=timing,sigma=n_sd_in,n_task=n_out,n_dim=n_dim,thres=bound,
+               rule_vec=task_rules[key]) for key, value in task.items()]
 
 datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_num*t_task) for tenv in tenvs]
 

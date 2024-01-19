@@ -24,8 +24,9 @@ n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd_in = 2         # standard deviation of input noise
-n_sd_net = 2        # standard deviation of network noise
-n_in = 3            # number of inputs
+n_sd_net = 0        # standard deviation of network noise
+n_dim = 2           # dimensionality of state space
+n_in = n_dim + 1    # number of inputs
 n_ff = n_neu        # number of neurons in feedforward neural net
 n_out = 2           # number of outputs
 batch_sz = 16       # batch size
@@ -173,8 +174,10 @@ with device:
                     quad_train = quads
                     
                 # Environments
-                tenvs_train = [value(timing=timing,sigma=n_sd_in,n_task=n_out,quad_num=quad_train) for key, value in task.items()]
-                tenvs_test = [value(timing=timing,sigma=n_sd_in,n_task=n_out,quad_num=quad_test) for key, value in task.items()]
+                tenvs_train = [value(timing=timing,sigma=n_sd_in,n_task=n_out,
+                                     n_dim=n_dim,quad_num=quad_train) for key, value in task.items()]
+                tenvs_test = [value(timing=timing,sigma=n_sd_in,n_task=n_out,
+                                    n_dim=n_dim,quad_num=quad_test) for key, value in task.items()]
                 
                 # Seed
                 seed_everything(seed)
