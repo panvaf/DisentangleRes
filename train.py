@@ -64,8 +64,8 @@ net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound !=
             (('NetN' + str(n_sd_net)) if n_sd_net != 2 else '') + \
             (('tau' + str(tau)) if tau != 100 else '') + \
             (('nTrial' + str(trial_num)) if trial_num != 4 else '')  + \
-            (('nTask' + str(n_out)) if n_out != 2 else '')  + \
             (('nDim' + str(n_dim)) if n_dim != 2 else '')  + \
+            (('nTask' + str(n_out)) if n_out != 2 else '')  + \
             (('Delay' + str(timing['delay'])) if timing['delay'] != 0 else '')  + \
             ('BalErr' if bal_err else '') + ('RandPen' if rand_pen else '') + \
             ('PenEnd' if pen_end else '') + (('run' + str(run)) if run != 0 else '')

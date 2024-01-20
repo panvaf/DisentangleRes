@@ -28,7 +28,7 @@ n_sd_net = 0        # standard deviation of network noise
 n_dim = 2           # dimensionality of state space
 n_in = n_dim + 1    # number of inputs
 n_ff = n_neu        # number of neurons in feedforward neural net
-n_out = 2           # number of outputs
+n_out = n_dim       # number of outputs
 batch_sz = 16       # batch size
 n_test = 40         # number of test batches
 trial_sz = 1        # draw multiple trials in a row
@@ -37,7 +37,7 @@ n_runs = 5          # number of trained networks for each number of tasks
 out_of_distribution = True
 keep_test_loss_hist = True
 save = False
-half_split = False
+split = 4
 activation = 'relu'
 filename = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask'
 
@@ -108,12 +108,12 @@ t_task = int(sum(timing.values())/dt)
 outputs = np.arange(t_task-1,trial_sz*t_task,t_task)
 
 # Store losses
-train_loss_hist = np.zeros((np.size(n_tasks),n_runs,4,n_fit,100))
-r_sq = np.zeros((np.size(n_tasks),n_runs,4,n_fit))
+train_loss_hist = np.zeros((np.size(n_tasks),n_runs,2**n_dim,n_fit,100))
+r_sq = np.zeros((np.size(n_tasks),n_runs,2**n_dim,n_fit))
 if keep_test_loss_hist:
-    test_loss_hist = np.zeros((np.size(n_tasks),n_runs,4,n_fit,100))
+    test_loss_hist = np.zeros((np.size(n_tasks),n_runs,2**n_dim,n_fit,100))
 else:
-    test_loss_hist = np.zeros((np.size(n_tasks),n_runs,4,n_fit))
+    test_loss_hist = np.zeros((np.size(n_tasks),n_runs,2**n_dim,n_fit))
     
 # Device
 
@@ -165,8 +165,8 @@ with device:
                 
                 if out_of_distribution:
                     
-                    if half_split:
-                        quad_test = (np.arange(0,len(quads),2) + quad_test - 1) % len(quads) + 1
+                    if split is not None:
+                        quad_test = (np.arange(0,len(quads),split) + quad_test - 1) % len(quads) + 1
                     
                     quad_train = np.setdiff1d(quads,quad_test)
                 
@@ -300,8 +300,6 @@ with device:
                             train_loss = 0; t += 1
                         
                     errors = np.reshape(np.asarray(errors),(-1,n_out))
-                    err = np.abs(errors) > .5
-            
                     mse = np.sum(errors**2)/np.size(errors)
                     r_sq[n,run,q,fit] = 1 - mse/var
             
@@ -322,12 +320,6 @@ plt.rc('xtick', labelsize=SMALL_SIZE)     # fontsize of the tick labels
 plt.rc('ytick', labelsize=SMALL_SIZE)     # fontsize of the tick labels
 plt.rc('legend', fontsize=SMALL_SIZE)     # legend fontsize
 plt.rc('figure', titlesize=MEDIUM_SIZE)   # fontsize of the figure title
-
-# Misclassification distance
-plt.hist(np.sum(err,axis=1))
-plt.xlabel('Misclassification distance')
-plt.ylabel('Count')
-plt.show()
 
 # r-squared plot
 perc = np.percentile(r_sq,[25,50,75],axis=(1,2,3))
