@@ -107,13 +107,26 @@ timing = {'fixation': 100,
 t_task = int(sum(timing.values())/dt)
 outputs = np.arange(t_task-1,trial_sz*t_task,t_task)
 
-# Store losses
-train_loss_hist = np.zeros((np.size(n_tasks),n_runs,2**n_dim,n_fit,100))
-r_sq = np.zeros((np.size(n_tasks),n_runs,2**n_dim,n_fit))
-if keep_test_loss_hist:
-    test_loss_hist = np.zeros((np.size(n_tasks),n_runs,2**n_dim,n_fit,100))
+# Compute number of iterations through quadrants and update number of fits
+n_quads = 2**n_dim
+if split:
+    n_repeat = n_quads/split
 else:
-    test_loss_hist = np.zeros((np.size(n_tasks),n_runs,2**n_dim,n_fit))
+    n_repeat = 1
+n_fits = np.ceil(n_fit/n_repeat)
+if n_fits == 1 and split:
+    # Force stop in certain quadrant 
+    q_stop = n_fit*split
+else:
+    q_stop = n_quads
+
+# Store losses
+train_loss_hist = np.zeros((np.size(n_tasks),n_runs,q_stop,n_fits,100))
+r_sq = np.zeros((np.size(n_tasks),n_runs,q_stop,n_fits))
+if keep_test_loss_hist:
+    test_loss_hist = np.zeros((np.size(n_tasks),n_runs,q_stop,n_fits,100))
+else:
+    test_loss_hist = np.zeros((np.size(n_tasks),n_runs,q_stop,n_fits))
     
 # Device
 
@@ -163,6 +176,10 @@ with device:
             # Choose a quadrant for test
             for q, quad_test in enumerate(quads):
                 
+                # Break early when multiple runs include same quadrants
+                if q == q_stop:
+                    break
+                
                 if out_of_distribution:
                     
                     if split is not None:
@@ -189,11 +206,11 @@ with device:
                                  seq_len=trial_sz*t_task) for tenv in tenvs_test]
                 
                 # Perform several fits for statistics
-                for fit in range(n_fit):
+                for fit in range(n_fits):
                     
                     errors = []
                     
-                    print("Fit {} of {} for quadrant {}".format(fit+1,n_fit,quad_test))
+                    print("Fit {} of {} for quadrant {}".format(fit+1,n_fits,quad_test))
                     
                     # Reset parameters of decoder for each run
                     for layer in ff_net.children():
