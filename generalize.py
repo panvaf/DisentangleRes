@@ -59,27 +59,6 @@ def seed_everything(seed):
 n_tasks = np.array([48])
 n_batch = np.array([5e3])
 
-# Free RT
-#n_tasks = np.array([6,12,24,48])
-#n_batch = np.array([2.5e3,3e3,2.2e3,2.5e3])
-# Fixed RT
-#n_tasks = np.array([2,3,6,12,24,48])
-#n_batch = np.array([3e3,3e3,4e3,3e3,3.5e3,2e3])
-# Half space
-#n_tasks = np.array([24])
-#n_batch = np.array([2e3])
-# LinMult
-#n_tasks = np.array([48])
-#n_batch = np.array([1e3])
-# LinCentOut
-#n_tasks = np.array([48])
-#n_batch = np.array([2.2e3])
-# LinCentOutTanh
-#n_tasks = np.array([48])
-#n_batch = np.array([3e3])
-# LinCentOutTanhLR001
-#n_tasks = np.array([48])
-#n_batch = np.array([3e3])
 # LinCentOutTanhSL64LR001
 #n_tasks = np.array([2,3,6,12,24,48])
 #n_batch = np.array([1.5e3,2.2e3,2.5e3,2.5e3,2.5e3,2.8e3])
@@ -92,6 +71,16 @@ n_batch = np.array([5e3])
 # LinBoundSL64NetN0
 #n_tasks = np.array([2,3,6,12,24,48])
 #n_batch = np.array([1e3,.5e3,3e3,4e3,4e3,5e3])
+# LinCentOutTanhSL64LR001nDim4
+#n_tasks = np.array([3,6,12])
+#n_batch = np.array([1e3,1e3,.5e3])
+# LinCentOutTanhSL64LR001nDim6
+#n_tasks = np.array([3,6,12])
+#n_batch = np.array([1e3,2e3,1e3])
+# LinCentOutTanhSL64LR001nDim12
+#n_tasks = np.array([3,6,12])
+#n_batch = np.array([.5e3,1e3,1e3])
+
 
 # Tasks
 task = {'DenoiseQuads':tasks.DenoiseQuads}
@@ -113,7 +102,7 @@ if split:
     n_repeat = n_quads/split
 else:
     n_repeat = 1
-n_fits = np.ceil(n_fit/n_repeat)
+n_fits = np.ceil(n_fit/n_repeat).astype(int)
 if n_fits == 1 and split:
     # Force stop in certain quadrant 
     q_stop = n_fit*split
