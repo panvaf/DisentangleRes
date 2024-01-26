@@ -38,6 +38,7 @@ out_of_distribution = True
 keep_test_loss_hist = True
 save = False
 split = 4
+split_var = False
 activation = 'relu'
 filename = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask'
 
@@ -108,14 +109,21 @@ if n_fits == 1 and split:
     q_stop = n_fit*split
 else:
     q_stop = n_quads
+ 
+# Split quadrants based on variables
+if split_var:
+    n_split = n_dim
+    n_fits = n_fit
+else:
+    n_split = q_stop
 
 # Store losses
-train_loss_hist = np.zeros((np.size(n_tasks),n_runs,q_stop,n_fits,100))
-r_sq = np.zeros((np.size(n_tasks),n_runs,q_stop,n_fits))
+train_loss_hist = np.zeros((np.size(n_tasks),n_runs,n_split,n_fits,100))
+r_sq = np.zeros((np.size(n_tasks),n_runs,n_split,n_fits))
 if keep_test_loss_hist:
-    test_loss_hist = np.zeros((np.size(n_tasks),n_runs,q_stop,n_fits,100))
+    test_loss_hist = np.zeros((np.size(n_tasks),n_runs,n_split,n_fits,100))
 else:
-    test_loss_hist = np.zeros((np.size(n_tasks),n_runs,q_stop,n_fits))
+    test_loss_hist = np.zeros((np.size(n_tasks),n_runs,n_split,n_fits))
     
 # Device
 
@@ -178,6 +186,12 @@ with device:
                 
                 else:
                     quad_train = quads
+                   
+                # Split quads according to sign of a held-out variable
+                if split_var:
+                    split = (quads - 1) // 2**q % 2
+                    quad_test = quads[split.astype(bool)]
+                    quad_train = np.setdiff1d(quads,quad_test)
                     
                 # Environments
                 tenvs_train = [value(timing=timing,sigma=n_sd_in,n_task=n_out,
