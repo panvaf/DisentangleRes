@@ -114,6 +114,7 @@ else:
 if split_var:
     n_split = n_dim
     n_fits = n_fit
+    q_stop = n_dim
 else:
     n_split = q_stop
 
@@ -189,8 +190,8 @@ with device:
                    
                 # Split quads according to sign of a held-out variable
                 if split_var:
-                    split = (quads - 1) // 2**q % 2
-                    quad_test = quads[split.astype(bool)]
+                    split_pos = (quads - 1) // 2**q % 2
+                    quad_test = quads[split_pos.astype(bool)]
                     quad_train = np.setdiff1d(quads,quad_test)
                     
                 # Environments
