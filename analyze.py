@@ -66,7 +66,7 @@ tenvs = [value(timing=timing,sigma=0,n_task=n_task,n_dim=n_dim,thres=thres,
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
 #net_file = 'Joint64batch1e3'
-net_file = 'LinCentOutTanhSL64batch1e5LR0.001Noise2nTrial1nTask' + str(n_task) + (('run' + str(run)) if run != 0 else '')
+net_file = 'LinCentOutTanhSL64batch1e5LR0.001Noise2nNetN0Trial1nTask' + str(n_task) + (('run' + str(run)) if run != 0 else '')
 
 net = RNN(n_in,n_neu,task_num*n_task,0,activation,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))

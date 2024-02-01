@@ -37,7 +37,7 @@ n_runs = 5          # number of trained networks for each number of tasks
 out_of_distribution = True
 keep_test_loss_hist = True
 save = False
-split = 4
+split = None
 split_var = False
 activation = 'relu'
 filename = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask'
@@ -59,29 +59,6 @@ def seed_everything(seed):
 
 n_tasks = np.array([48])
 n_batch = np.array([5e3])
-
-# LinCentOutTanhSL64LR001
-#n_tasks = np.array([2,3,6,12,24,48])
-#n_batch = np.array([1.5e3,2.2e3,2.5e3,2.5e3,2.5e3,2.8e3])
-# LinCentOutTanhSL64LR001NetN0
-#n_tasks = np.array([2,3,6,12,24,48])
-#n_batch = np.array([2e3,1e3,2e3,1.5e3,1.5e3,2e3])
-# LinBoundSL64
-#n_tasks = np.array([2,3,6,12,24,48])
-#n_batch = np.array([1.7e3,2e3,2.2e3,2e3,2.5e3,1.8e3])
-# LinBoundSL64NetN0
-#n_tasks = np.array([2,3,6,12,24,48])
-#n_batch = np.array([1e3,.5e3,3e3,4e3,4e3,5e3])
-# LinCentOutTanhSL64LR001nDim4
-#n_tasks = np.array([3,6,12])
-#n_batch = np.array([1e3,1e3,.5e3])
-# LinCentOutTanhSL64LR001nDim6
-#n_tasks = np.array([3,6,12])
-#n_batch = np.array([1e3,2e3,1e3])
-# LinCentOutTanhSL64LR001nDim12
-#n_tasks = np.array([3,6,12])
-#n_batch = np.array([.5e3,1e3,1e3])
-
 
 # Tasks
 task = {'DenoiseQuads':tasks.DenoiseQuads}
@@ -156,7 +133,7 @@ with device:
             checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
             net.load_state_dict(checkpoint['state_dict'])
             
-            # Feedforward neural network that learns multiplication
+            # Initialize decoder
             
             ff_net = nn.Sequential(
                     nn.Linear(n_neu,n_out)
@@ -164,7 +141,7 @@ with device:
                     #nn.Linear(n_ff,n_out)
                     )
             
-            # Train feedforward neural net only
+            # Train decoder only
             net.eval()
             for param in net.parameters():
                 param.requires_grad = False
@@ -352,16 +329,18 @@ ax.errorbar(n_tasks*off_p,perc[1],yerr=[perc[1]-perc[0],perc[2]-perc[1]],linesty
 #ax.scatter(n_tasks*off_m,perc_free[1],color='firebrick',label='Free')
 #ax.errorbar(n_tasks*off_m,perc_free[1],yerr=[perc_free[1]-perc_free[0],
 #                    perc_free[2]-perc_free[1]],linestyle='',color='firebrick')
+ax.axhline(0.9,color='lightblue',linestyle='--',zorder=-1,linewidth=1)
+ax.axhline(0.997,color='lightblue',linestyle='--',zorder=-1,linewidth=1)
 ax.set_ylabel('Out-of-distribution $r^2$')
 ax.set_xlabel('# of tasks')
 ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
 ax.spines['left'].set_position(('data', 1.5))
-ax.spines['bottom'].set_position(('data', .18))
+ax.spines['bottom'].set_position(('data', .48))
 ax.set_xscale("log")
-ax.set_xticks([2,10,50])
-ax.set_xticklabels([2,10,50])
-plt.ylim([0.2,1])
+ax.set_xticks([2,10,30])
+ax.set_xticklabels([2,10,30])
+plt.ylim([0.5,1])
 plt.legend(frameon=False,ncol=1,bbox_to_anchor=(1,.4),title='RT')
 #plt.savefig('r_squared.png',bbox_inches='tight',format='png',dpi=300)
 #plt.savefig('r_squared.eps',bbox_inches='tight',format='eps',dpi=300)

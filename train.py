@@ -76,7 +76,7 @@ tenvs = [value(timing=timing,sigma=n_sd_in,n_task=n_out,n_dim=n_dim,thres=bound,
 
 datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_num*t_task) for tenv in tenvs]
 
-# A sample environment from dataset
+# Create environment
 env = datasets[0].env
 
 # Network input and output size
