@@ -114,7 +114,7 @@ class rot_3D_plot():
                         k = 1 if trial['ground_truth'][-1][0] > 0 else 0
                         l = 1 if trial['ground_truth'][-1][int(self.n_task/2)] > 0 else 0
                     quad_col = colors[k][l]
-                    
+                  
                 col.append(quad_col)
             
         else:
@@ -275,3 +275,15 @@ def get_device():
     
     else:
         return torch.device('cpu')
+    
+    
+# Mix inputs with encoder
+
+def encode(encoder,inp,n_dim,n_in):
+    
+    inp_temp = encoder(inp[:,:,-n_dim:])
+    
+    if n_in > n_dim:
+        return torch.cat((inp[:,:,0].unsqueeze(2),inp_temp),dim=2)
+    else:
+        return inp_temp

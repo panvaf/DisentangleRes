@@ -25,7 +25,7 @@ task_num = len(task)
 # Constants
 n_neu = 64          # number of recurrent neurons
 batch_sz = 16       # batch size
-n_batch = 1e5       # number of batches
+n_batch = 1e4       # number of batches
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd_in = 2         # standard deviation of input noise
@@ -38,6 +38,7 @@ pen_end = False     # only penalize final time point
 trial_num = 1       # number of trials drawn in a row
 rand_pen = False    # randomly penalize a certain time point in the trial
 bound = 5           # DDM boundary
+encode = True      # Whether to nonlinearly mix the input features
 activation = 'relu' # activation function
 lr = 1e-3           # Learning rate
 run = 0
@@ -68,7 +69,8 @@ net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound !=
             (('nTask' + str(n_out)) if n_out != 2 else '')  + \
             (('Delay' + str(timing['delay'])) if timing['delay'] != 0 else '')  + \
             ('BalErr' if bal_err else '') + ('RandPen' if rand_pen else '') + \
-            ('PenEnd' if pen_end else '') + (('run' + str(run)) if run != 0 else '')
+            ('PenEnd' if pen_end else '') + ('Mix' if encode else '') + \
+            (('run' + str(run)) if run != 0 else '')
 
 # Make supervised datasets
 tenvs = [value(timing=timing,sigma=n_sd_in,n_task=n_out,n_dim=n_dim,thres=bound,
@@ -98,20 +100,35 @@ else:
 
 # Device
 device = util.get_device()
+
+# Encoder
+encoder = nn.Sequential(
+        nn.Linear(n_dim,100),
+        nn.ReLU(),
+        nn.Linear(100,100),
+        nn.ReLU(),
+        nn.Linear(100,40)
+        ).to(device)
+
+# Freeze encoder weights
+for param in encoder.parameters():
+    param.requires_grad = False
+
+# Initialize RNN
+if encode:
+    n_in = encoder[-1].out_features + (1 if n_in>n_dim else 0)
     
-# Initialize RNN  
 net = RNN(n_in,n_neu,n_out*task_num,n_sd_net,activation,tau,dt).to(device)
 
-# Feedforward NN
-ff_net = nn.Sequential(
+# Decoder
+decoder = nn.Sequential(
         nn.Linear(n_neu,n_out*task_num),
         nn.Tanh()
-        #nn.Linear(n_ff,n_out*task_num)
         ).to(device)
 
 # Optimizer
 opt = optim.Adam(net.parameters(), lr=lr)
-opt.add_param_group({'params': ff_net.parameters()})
+opt.add_param_group({'params': decoder.parameters()})
 
 # Train RNN
 total_loss = 0; k = 0
@@ -152,9 +169,12 @@ with device:
         # Empty gradient buffers
         opt.zero_grad()
         
-        # Forward run
+        # Forward pass
+        if encode:
+            inputs = util.encode(encoder,inputs,n_dim,inputs.shape[2])
+            
         _, fr = net(inputs)
-        output = ff_net(fr)
+        output = decoder(fr)
         
         # Compute loss
         #loss = criterion(output.view(-1,n_out),target.flatten())
@@ -174,10 +194,14 @@ with device:
             print('Loss {:0.3f}'.format(total_loss))
             loss_hist[k] = total_loss
             total_loss = 0; k += 1
-            
-    # Save network
+     
+# Save network
+if encode:
+    torch.save({'state_dict': net.state_dict(),'encoder': encoder.state_dict(),'loss_hist': loss_hist},
+              data_path + net_file + '.pth', _use_new_zipfile_serialization=False)
+else:
     torch.save({'state_dict': net.state_dict(),'loss_hist': loss_hist},
-                        data_path + net_file + '.pth', _use_new_zipfile_serialization=False)
+              data_path + net_file + '.pth', _use_new_zipfile_serialization=False)
 
 end_time = time.time()
 elapsed_time = end_time - start_time

@@ -41,6 +41,11 @@ split = None
 split_var = False
 activation = 'relu'
 filename = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask'
+encode = True if 'Mix' in filename else False
+if encode:
+    n_feat = 40 + (1 if n_in>n_dim else 0)
+else:
+    n_feat = n_in
 
 # Reproducibility
 seed = 42  # 3
@@ -129,12 +134,27 @@ with device:
             data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
             net_file = filename + str(n_task) + (('run' + str(run)) if run != 0 else '')
             
-            net = RNN(n_in,n_neu,n_task,n_sd_net,activation,tau,dt)
+            net = RNN(n_feat,n_neu,n_task,n_sd_net,activation,tau,dt)
             checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
             net.load_state_dict(checkpoint['state_dict'])
             
-            # Initialize decoder
+            if encode:
+                # Initialize encoder
+                encoder = nn.Sequential(
+                        nn.Linear(n_dim,100),
+                        nn.ReLU(),
+                        nn.Linear(100,100),
+                        nn.ReLU(),
+                        nn.Linear(100,40)
+                        ).to(device)
+                
+                encoder.load_state_dict(checkpoint['encoder'])
+                
+                # Freeze encoder weights
+                for param in encoder.parameters():
+                    param.requires_grad = False
             
+            # Initialize decoder
             ff_net = nn.Sequential(
                     nn.Linear(n_neu,n_out)
                     #nn.Sigmoid(),
@@ -222,7 +242,10 @@ with device:
                         # Empty gradient buffers
                         opt.zero_grad()
                         
-                        # Forward run
+                        # Forward pass
+                        if encode:
+                            inputs = util.encode(encoder,inputs,n_dim,n_in)
+                        
                         net_out, fr = net(inputs)
                         output = ff_net(fr)
                         
@@ -266,7 +289,10 @@ with device:
                                         inputs = torch.from_numpy(inputs).type(torch.float)
                                         target = torch.from_numpy(target).type(torch.float)
                                         
-                                        # Forward run
+                                        # Forward pass
+                                        if encode:
+                                            inputs = util.encode(encoder,inputs,n_dim,n_in)                                        
+                                        
                                         net_out, fr = net(inputs)
                                         output = ff_net(fr)
                                         

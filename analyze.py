@@ -43,8 +43,14 @@ n_trial = 40        # number of bulk example trials to plot
 n_exam = 5          # number of example points to plot with separate colors
 thres = 5           # DDM boundary
 n_sweep = 8         # Number of stimuli values to sweep
+encode = False
 activation = 'relu'
 run = 0
+
+if encode:
+    n_feat = 40 + (1 if n_in>n_dim else 0)
+else:
+    n_feat = n_in
 
 # Tasks
 task = {"LinearClassificationCentOut":tasks.LinearClassificationCentOut}
@@ -66,12 +72,26 @@ tenvs = [value(timing=timing,sigma=0,n_task=n_task,n_dim=n_dim,thres=thres,
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
 #net_file = 'Joint64batch1e3'
-net_file = 'LinCentOutTanhSL64batch1e5LR0.001Noise2nNetN0Trial1nTask' + str(n_task) + (('run' + str(run)) if run != 0 else '')
+net_file = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask' + str(n_task) + \
+            ('Mix' if encode else '')  + (('run' + str(run)) if run != 0 else '')
+            
+# Encoder
+encoder = nn.Sequential(
+        nn.Linear(n_dim,100),
+        nn.ReLU(),
+        nn.Linear(100,100),
+        nn.ReLU(),
+        nn.Linear(100,40)
+        )
 
-net = RNN(n_in,n_neu,task_num*n_task,0,activation,tau,dt)
+net = RNN(n_feat,n_neu,task_num*n_task,0,activation,tau,dt)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
 net.load_state_dict(checkpoint['state_dict'])
 net.eval()
+
+if encode:
+    encoder.load_state_dict(checkpoint['encoder'])
+    encoder.eval()
 
 # Visualize RNN activity
 activity_dict = {}; output_dict = {}; trial_info = {}
@@ -82,6 +102,8 @@ for i in range(n_trial):
     tenv = tenvs[randint(0,task_num-1)]
     tenv.new_trial(); ob = tenv.ob
     inp = torch.from_numpy(ob[np.newaxis, :, :]).type(torch.float)[:,:,-n_in:]
+    if encode:
+        inp = util.encode(encoder,inp,n_dim,n_in)
     output, rnn_activity = net(inp)
     rnn_activity = rnn_activity[0, :, :].detach().numpy()
     output = output[0, :, :].detach().numpy()
@@ -112,6 +134,9 @@ plt.show()
 # Freeze for parameters in the recurrent network
 for param in net.parameters():
     param.requires_grad = False
+    
+for param in encoder.parameters():
+    param.requires_grad = False
 
 batch_size = 128
 fixedpoints = np.empty([batch_size,task_num,n_neu])
@@ -127,6 +152,13 @@ for j in range(task_num):
     elif n_in==2:
         inp = np.tile([0, 0],(batch_size, 1))
     inp = torch.tensor(inp, dtype=torch.float32)
+    
+    if encode:
+        inputs = encoder(inp[:,-n_dim:])
+        if n_in > n_dim:
+            inp = torch.cat((inp[:,0].unsqueeze(1),inputs),dim=1)
+        else:
+            inp = inputs
     
     # Initialize hidden activity                                                                    
     hdn = np.zeros((batch_size, n_neu))
@@ -183,6 +215,8 @@ for i in range(n_exam):
     stims[i] = env.trial['stim']
     
     inp = torch.from_numpy(ob[np.newaxis, :, :]).type(torch.float)[:,:,-n_in:]
+    if encode:
+        inp = util.encode(encoder,inp,n_dim,n_in)
     _, rnn_activity = net(inp)
     rnn_activity = rnn_activity[0, :, :].detach().numpy()
     ex_activ_dict[i] = rnn_activity
@@ -336,6 +370,8 @@ for i, x1 in enumerate(x1s):
         inp = np.tile([1, x1, x2],(1, int(timing['stimulus']/100), 1)) if n_in == 3 else np.tile([x1, x2],(1, int(timing['stimulus']/100), 1))
         inp = torch.tensor(inp, dtype=torch.float32)
         
+        if encode:
+            inp = util.encode(encoder,inp,n_dim,n_in)
         _, rnn_activity = net(inp)
         ss_fr[i,j] = rnn_activity[0, -1, :].detach().numpy()
         
@@ -395,3 +431,5 @@ cbar.set_label('Correlation coefficient')
 #plt.savefig('corr.eps',bbox_inches='tight',format='eps',dpi=300)
 
 plt.show()
+
+# TODO: add functionality that visualizes encoder transformation
