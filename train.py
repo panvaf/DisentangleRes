@@ -103,11 +103,11 @@ device = util.get_device()
 
 # Encoder
 encoder = nn.Sequential(
-        nn.Linear(n_dim,100),
+        nn.Linear(n_dim,100,bias=False),
         nn.ReLU(),
-        nn.Linear(100,100),
+        nn.Linear(100,100,bias=False),
         nn.ReLU(),
-        nn.Linear(100,40)
+        nn.Linear(100,40,bias=False)
         ).to(device)
 
 # Freeze encoder weights

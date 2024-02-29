@@ -33,15 +33,15 @@ batch_sz = 16       # batch size
 n_test = 40         # number of test batches
 trial_sz = 1        # draw multiple trials in a row
 n_fit = 5           # number of fits for each quadrant
-n_runs = 5          # number of trained networks for each number of tasks
+n_runs = 1          # number of trained networks for each number of tasks
 out_of_distribution = True
 keep_test_loss_hist = True
 save = False
 split = None
 split_var = False
 activation = 'relu'
-filename = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask'
-encode = True if 'Mix' in filename else False
+filename = 'LinCentOutTanhSL64LR0.001Noise2NetN0nTrial1nTask'
+encode = True
 if encode:
     n_feat = 40 + (1 if n_in>n_dim else 0)
 else:
@@ -107,7 +107,7 @@ if keep_test_loss_hist:
     test_loss_hist = np.zeros((np.size(n_tasks),n_runs,n_split,n_fits,100))
 else:
     test_loss_hist = np.zeros((np.size(n_tasks),n_runs,n_split,n_fits))
-    
+
 # Device
 
 device = util.get_device()
@@ -132,7 +132,7 @@ with device:
             
             # Load network
             data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-            net_file = filename + str(n_task) + (('run' + str(run)) if run != 0 else '')
+            net_file = filename + str(n_task) + ('Mix' if encode else '') + (('run' + str(run)) if run != 0 else '')
             
             net = RNN(n_feat,n_neu,n_task,n_sd_net,activation,tau,dt)
             checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -141,11 +141,11 @@ with device:
             if encode:
                 # Initialize encoder
                 encoder = nn.Sequential(
-                        nn.Linear(n_dim,100),
+                        nn.Linear(n_dim,100,bias=False),
                         nn.ReLU(),
-                        nn.Linear(100,100),
+                        nn.Linear(100,100,bias=False),
                         nn.ReLU(),
-                        nn.Linear(100,40)
+                        nn.Linear(100,40,bias=False)
                         ).to(device)
                 
                 encoder.load_state_dict(checkpoint['encoder'])

@@ -43,7 +43,7 @@ n_trial = 40        # number of bulk example trials to plot
 n_exam = 5          # number of example points to plot with separate colors
 thres = 5           # DDM boundary
 n_sweep = 8         # Number of stimuli values to sweep
-encode = False
+encode = True
 activation = 'relu'
 run = 0
 
@@ -72,16 +72,16 @@ tenvs = [value(timing=timing,sigma=0,n_task=n_task,n_dim=n_dim,thres=thres,
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
 #net_file = 'Joint64batch1e3'
-net_file = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask' + str(n_task) + \
+net_file = 'LinCentOutTanhSL64LR0.001Noise2NetN0nTrial1nTask' + str(n_task) + \
             ('Mix' if encode else '')  + (('run' + str(run)) if run != 0 else '')
             
 # Encoder
 encoder = nn.Sequential(
-        nn.Linear(n_dim,100),
+        nn.Linear(n_dim,100,bias=False),
         nn.ReLU(),
-        nn.Linear(100,100),
+        nn.Linear(100,100,bias=False),
         nn.ReLU(),
-        nn.Linear(100,40)
+        nn.Linear(100,40,bias=False)
         )
 
 net = RNN(n_feat,n_neu,task_num*n_task,0,activation,tau,dt)
@@ -166,7 +166,7 @@ for j in range(task_num):
     idx_t = np.random.choice(ob.shape[0],batch_size)
     for i in range(batch_size):
         hdn[i] = torch.from_numpy(activity_dict[idx_tr[i]][idx_t[i]])
-    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*5+hdn,
+    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*.5+hdn,
                       requires_grad=True, dtype=torch.float32)
     
     # Use Adam optimizer
