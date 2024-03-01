@@ -72,7 +72,7 @@ tenvs = [value(timing=timing,sigma=0,n_task=n_task,n_dim=n_dim,thres=thres,
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
 #net_file = 'Joint64batch1e3'
-net_file = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask' + str(n_task) + \
+net_file = 'LinCentOutTanhSL64LR0.001Noise2NetN0nTrial1nTask' + str(n_task) + \
             ('Mix' if encode else '')  + (('run' + str(run)) if run != 0 else '')
             
 # Encoder
@@ -445,11 +445,16 @@ if encoder:
     tenvs = [value(timing=timing,sigma=2,n_task=n_task,n_dim=n_dim,thres=thres,
                    rule_vec=task_rules[key]) for key, value in task.items()]
     
-    datasets = [ngym.Dataset(tenv,batch_size=100,seq_len=t_task) for tenv in tenvs]
-    dataset = datasets[0]
+    inp_dict = {}; trial_info_enc = {}
     
-    inputs, _ = dataset()
-    inputs = np.transpose(inputs[:,:,-n_dim:],(1,0,2))
+    # Get inputs and trial info
+    for i in range(100):
+        tenvs[0].new_trial(); ob = tenvs[0].ob
+        inp = torch.from_numpy(ob[np.newaxis, :, :]).type(torch.float)[:,:,-n_dim:]
+        inp_dict[i] = inp
+        trial_info_enc[i] = tenvs[0].trial
+    
+    inputs = np.concatenate(list(inp_dict[i] for i in range(100)), axis=0)
     inputs = torch.from_numpy(inputs).type(torch.float)
     
     out = encoder(inputs)
@@ -458,11 +463,9 @@ if encoder:
     pca_enc = PCA(n_components=10)
     pca.fit(out_n)
     
-    b = np.array([[]])
-    a = [{'ground_truth':np.array([1])}]
+    fxdpnt = np.array([[]])
     
-    plot_enc = util.rot_3D_plot(out.detach().numpy(),b,pca,100,a,
-                            'Features After Encoder',n_in=2,colors=None)
+    plot_enc = util.rot_3D_plot(out.detach().numpy(),fxdpnt,pca,100,trial_info_enc,
+                            net_file+' Features After Encoder',n_in=3,colors=colors)
     
     plot_enc.plot()
-    
