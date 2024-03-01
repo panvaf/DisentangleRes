@@ -141,11 +141,11 @@ with device:
             if encode:
                 # Initialize encoder
                 encoder = nn.Sequential(
-                        nn.Linear(n_dim,100,bias=False),
+                        nn.Linear(n_dim,100),
                         nn.ReLU(),
-                        nn.Linear(100,100,bias=False),
+                        nn.Linear(100,100),
                         nn.ReLU(),
-                        nn.Linear(100,40,bias=False)
+                        nn.Linear(100,40)
                         ).to(device)
                 
                 encoder.load_state_dict(checkpoint['encoder'])

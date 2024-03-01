@@ -72,16 +72,16 @@ tenvs = [value(timing=timing,sigma=0,n_task=n_task,n_dim=n_dim,thres=thres,
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
 #net_file = 'Joint64batch1e3'
-net_file = 'LinCentOutTanhSL64LR0.001Noise2NetN0nTrial1nTask' + str(n_task) + \
+net_file = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask' + str(n_task) + \
             ('Mix' if encode else '')  + (('run' + str(run)) if run != 0 else '')
             
 # Encoder
 encoder = nn.Sequential(
-        nn.Linear(n_dim,100,bias=False),
+        nn.Linear(n_dim,100),
         nn.ReLU(),
-        nn.Linear(100,100,bias=False),
+        nn.Linear(100,100),
         nn.ReLU(),
-        nn.Linear(100,40,bias=False)
+        nn.Linear(100,40)
         )
 
 net = RNN(n_feat,n_neu,task_num*n_task,0,activation,tau,dt)
@@ -166,7 +166,7 @@ for j in range(task_num):
     idx_t = np.random.choice(ob.shape[0],batch_size)
     for i in range(batch_size):
         hdn[i] = torch.from_numpy(activity_dict[idx_tr[i]][idx_t[i]])
-    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*.5+hdn,
+    hidden = torch.tensor(np.random.rand(batch_size, n_neu)*6+hdn,
                       requires_grad=True, dtype=torch.float32)
     
     # Use Adam optimizer
@@ -432,4 +432,37 @@ cbar.set_label('Correlation coefficient')
 
 plt.show()
 
-# TODO: add functionality that visualizes encoder transformation
+# Visualize encoder transformation
+if encoder:
+
+    timing = {'fixation': 0,
+              'stimulus': 500,
+              'delay': 0,
+              'decision': 0}
+    
+    t_task = int(sum(timing.values())/dt)
+    
+    tenvs = [value(timing=timing,sigma=2,n_task=n_task,n_dim=n_dim,thres=thres,
+                   rule_vec=task_rules[key]) for key, value in task.items()]
+    
+    datasets = [ngym.Dataset(tenv,batch_size=100,seq_len=t_task) for tenv in tenvs]
+    dataset = datasets[0]
+    
+    inputs, _ = dataset()
+    inputs = np.transpose(inputs[:,:,-n_dim:],(1,0,2))
+    inputs = torch.from_numpy(inputs).type(torch.float)
+    
+    out = encoder(inputs)
+    out_n = out.view([-1,40]).detach().numpy()
+    
+    pca_enc = PCA(n_components=10)
+    pca.fit(out_n)
+    
+    b = np.array([[]])
+    a = [{'ground_truth':np.array([1])}]
+    
+    plot_enc = util.rot_3D_plot(out.detach().numpy(),b,pca,100,a,
+                            'Features After Encoder',n_in=2,colors=None)
+    
+    plot_enc.plot()
+    

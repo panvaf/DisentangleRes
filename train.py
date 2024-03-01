@@ -25,20 +25,20 @@ task_num = len(task)
 # Constants
 n_neu = 64          # number of recurrent neurons
 batch_sz = 16       # batch size
-n_batch = 1e4       # number of batches
+n_batch = 1e5       # number of batches
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd_in = 2         # standard deviation of input noise
 n_sd_net = 0        # standard deviation of network noise
 n_dim = 2           # dimensionality of state space
 print_every = int(n_batch/100)
-n_out = 48          # number of outputs per task
+n_out = 24          # number of outputs per task
 bal_err = False     # whether to balance penalization of decision vs. integration
 pen_end = False     # only penalize final time point
 trial_num = 1       # number of trials drawn in a row
 rand_pen = False    # randomly penalize a certain time point in the trial
 bound = 5           # DDM boundary
-encode = True      # Whether to nonlinearly mix the input features
+encode = True       # Whether to nonlinearly mix the input features
 activation = 'relu' # activation function
 lr = 1e-3           # Learning rate
 run = 0
@@ -103,11 +103,11 @@ device = util.get_device()
 
 # Encoder
 encoder = nn.Sequential(
-        nn.Linear(n_dim,100,bias=False),
+        nn.Linear(n_dim,100),
         nn.ReLU(),
-        nn.Linear(100,100,bias=False),
+        nn.Linear(100,100),
         nn.ReLU(),
-        nn.Linear(100,40,bias=False)
+        nn.Linear(100,40)
         ).to(device)
 
 # Freeze encoder weights
