@@ -72,7 +72,7 @@ tenvs = [value(timing=timing,sigma=0,n_task=n_task,n_dim=n_dim,thres=thres,
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
 #net_file = 'Joint64batch1e3'
-net_file = 'LinCentOutTanhSL64LR0.001Noise2NetN0nTrial1nTask' + str(n_task) + \
+net_file = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask' + str(n_task) + \
             ('Mix' if encode else '')  + (('run' + str(run)) if run != 0 else '')
             
 # Encoder
@@ -461,11 +461,11 @@ if encoder:
     out_n = out.view([-1,40]).detach().numpy()
     
     pca_enc = PCA(n_components=10)
-    pca.fit(out_n)
+    pca_enc.fit(out_n)
     
     fxdpnt = np.array([[]])
     
-    plot_enc = util.rot_3D_plot(out.detach().numpy(),fxdpnt,pca,100,trial_info_enc,
-                            net_file+' Features After Encoder',n_in=3,colors=colors)
+    plot_enc = util.rot_3D_plot(out.detach().numpy(),fxdpnt,pca_enc,100,trial_info_enc,
+                            net_file+' Features After Encoder',n_in=3,colors=colors,lines=None)
     
     plot_enc.plot()

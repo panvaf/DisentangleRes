@@ -53,7 +53,7 @@ def MSELoss_weighted(output,target,mask):
 class rot_3D_plot():
     
     def __init__(self,activity,fixedpoints,pca,n_trial,trial_info,net_file,
-                 n_in=3,colors=None):
+                 n_in=3,colors=None,lines=True):
         
         super().__init__()
         
@@ -82,6 +82,9 @@ class rot_3D_plot():
         else:
             self.lines = False
             self.individual_examples = False
+            
+        if lines is None:
+            self.lines = False
         
     # Get the colors for the final dot in the scatterplot
     def get_colors(self,colors):
@@ -134,7 +137,11 @@ class rot_3D_plot():
         
 
         for i in range(self.n_trial):
-            activity_pc = self.pca.transform(self.activity[i])
+            
+            if self.pca:
+                activity_pc = self.pca.transform(self.activity[i])
+            else:
+                activity_pc = self.activity[i]
             
             if self.individual_examples:
                 line_col = self.colors[i]
@@ -145,14 +152,15 @@ class rot_3D_plot():
                 fig.add_traces(go.Scatter3d(x=activity_pc[:, 0],y=activity_pc[:, 1],
                            z=activity_pc[:, 2],marker=dict(size=3,color=np.arange(self.t_task),
                            colorscale='blues',symbol='circle'),line=dict(color=line_col,width=self.width)))
-                if self.colors[i]:
-                    fig.add_traces(go.Scatter3d(x=np.array(activity_pc[-1, 0]),y=np.array(activity_pc[-1, 1]),
-                           z=np.array(activity_pc[-1, 2]),marker=dict(size=self.mark_sz,color=self.colors[i],symbol=self.marker),
-                           line=dict(color='darkblue',width=self.width)))
             else:
                 fig.add_traces(go.Scatter3d(x=activity_pc[:-1, 0],y=activity_pc[:-1, 1],
                            z=activity_pc[:-1, 2],marker=dict(size=3,color=np.arange(self.t_task),
                            colorscale='blues',symbol='circle'),mode='markers'))
+            
+            if self.colors[i]:
+                fig.add_traces(go.Scatter3d(x=np.array(activity_pc[-1, 0]),y=np.array(activity_pc[-1, 1]),
+                       z=np.array(activity_pc[-1, 2]),marker=dict(size=self.mark_sz,color=self.colors[i],symbol=self.marker),
+                       line=dict(color='darkblue',width=self.width)))
                 
         # Fixed points are shown in cross
         cols = ['firebrick','darkorange']
