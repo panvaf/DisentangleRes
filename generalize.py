@@ -46,7 +46,7 @@ noise_enc = False
 if encode:
     n_feat = 40 + (1 if n_in>n_dim else 0)
     if noise_enc:
-        n_sd_enc = n_sd_in/100
+        n_sd_enc = n_sd_in/20
         n_sd_in = 0
 else:
     n_feat = n_in

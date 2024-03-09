@@ -38,17 +38,18 @@ pen_end = False     # only penalize final time point
 trial_num = 1       # number of trials drawn in a row
 rand_pen = False    # randomly penalize a certain time point in the trial
 bound = 5           # DDM boundary
-encode = True       # Whether to nonlinearly mix the input features
+encode = False      # Whether to nonlinearly mix the input features
 noise_enc = False   # Whether to noise after the encoder
+corr = 0            # Correlation between factors
 activation = 'relu' # activation function
 lr = 1e-3           # Learning rate
 run = 0
 
 if encode:
     if noise_enc:
-        # Divide by 10 bc n_sd_in is divided by 10 in tasks and by another 10 
-        # because this is roughly what the encoder does
-        n_sd_enc = n_sd_in/100
+        # Divide by 10 bc n_sd_in is divided by 10 in tasks and by another 2 
+        # because this is roughly what the encoder does for this noise level
+        n_sd_enc = n_sd_in/20
         n_sd_in = 0
 
 # Environment
@@ -74,6 +75,7 @@ net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound !=
             (('tau' + str(tau)) if tau != 100 else '') + \
             (('nTrial' + str(trial_num)) if trial_num != 4 else '')  + \
             (('nDim' + str(n_dim)) if n_dim != 2 else '')  + \
+            (('Corr' + str(corr)) if corr else '')  + \
             (('nTask' + str(n_out)) if n_out != 2 else '')  + \
             (('Delay' + str(timing['delay'])) if timing['delay'] != 0 else '')  + \
             ('BalErr' if bal_err else '') + ('RandPen' if rand_pen else '') + \
@@ -82,7 +84,7 @@ net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound !=
 
 # Make supervised datasets
 tenvs = [value(timing=timing,sigma=n_sd_in,n_task=n_out,n_dim=n_dim,thres=bound,
-               rule_vec=task_rules[key]) for key, value in task.items()]
+               corr=corr,rule_vec=task_rules[key]) for key, value in task.items()]
 
 datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_num*t_task) for tenv in tenvs]
 
