@@ -114,7 +114,7 @@ class AttributeIntegrationCent(ngym.TrialEnv):
     Inputs:
         sigma: float, input noise level
     """
-
+    
     def __init__(self, dt=100, rewards=None, timing=None, sigma=1.0, rule_vec = None, **kwargs):
         super().__init__(dt=dt)
         
@@ -129,10 +129,10 @@ class AttributeIntegrationCent(ngym.TrialEnv):
         self.rewards = {'abort': -0.1, 'correct': +1., 'fail': 0.}
         if rewards:
             self.rewards.update(rewards)
-
+        
         if timing:
             self.timing.update(timing)
-
+        
         self.abort = False
 
         self.choices = np.arange(3)

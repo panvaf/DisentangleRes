@@ -40,10 +40,14 @@ save = False
 split = None
 split_var = False
 activation = 'relu'
-filename = 'LinCentOutTanhSL64LR0.001Noise2NetN0nTrial1nTask'
+filename = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask'
 encode = True
+noise_enc = False
 if encode:
     n_feat = 40 + (1 if n_in>n_dim else 0)
+    if noise_enc:
+        n_sd_enc = n_sd_in/100
+        n_sd_in = 0
 else:
     n_feat = n_in
 
@@ -245,6 +249,8 @@ with device:
                         # Forward pass
                         if encode:
                             inputs = util.encode(encoder,inputs,n_dim,n_in)
+                            if noise_enc:
+                                inputs += n_sd_enc * torch.randn_like(inputs)
                         
                         net_out, fr = net(inputs)
                         output = ff_net(fr)
@@ -291,7 +297,9 @@ with device:
                                         
                                         # Forward pass
                                         if encode:
-                                            inputs = util.encode(encoder,inputs,n_dim,n_in)                                        
+                                            inputs = util.encode(encoder,inputs,n_dim,n_in)
+                                            if noise_enc:
+                                                inputs += n_sd_enc * torch.randn_like(inputs)
                                         
                                         net_out, fr = net(inputs)
                                         output = ff_net(fr)

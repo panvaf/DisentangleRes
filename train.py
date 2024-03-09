@@ -39,9 +39,17 @@ trial_num = 1       # number of trials drawn in a row
 rand_pen = False    # randomly penalize a certain time point in the trial
 bound = 5           # DDM boundary
 encode = True       # Whether to nonlinearly mix the input features
+noise_enc = False   # Whether to noise after the encoder
 activation = 'relu' # activation function
 lr = 1e-3           # Learning rate
 run = 0
+
+if encode:
+    if noise_enc:
+        # Divide by 10 bc n_sd_in is divided by 10 in tasks and by another 10 
+        # because this is roughly what the encoder does
+        n_sd_enc = n_sd_in/100
+        n_sd_in = 0
 
 # Environment
 timing = {'fixation': 100,
@@ -70,7 +78,7 @@ net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound !=
             (('Delay' + str(timing['delay'])) if timing['delay'] != 0 else '')  + \
             ('BalErr' if bal_err else '') + ('RandPen' if rand_pen else '') + \
             ('PenEnd' if pen_end else '') + ('Mix' if encode else '') + \
-            (('run' + str(run)) if run != 0 else '')
+            ('nEnc' if noise_enc else '') + (('run' + str(run)) if run != 0 else '')
 
 # Make supervised datasets
 tenvs = [value(timing=timing,sigma=n_sd_in,n_task=n_out,n_dim=n_dim,thres=bound,
@@ -172,6 +180,8 @@ with device:
         # Forward pass
         if encode:
             inputs = util.encode(encoder,inputs,n_dim,inputs.shape[2])
+            if noise_enc:
+                inputs += n_sd_enc * torch.randn_like(inputs)
             
         _, fr = net(inputs)
         output = decoder(fr)
