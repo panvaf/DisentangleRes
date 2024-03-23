@@ -109,7 +109,7 @@ else:
 
 
 # Device
-device = util.get_device()
+device = torch.device('cpu')
 
 # Encoder
 encoder = nn.Sequential(
@@ -143,6 +143,8 @@ opt.add_param_group({'params': decoder.parameters()})
 # Train RNN
 total_loss = 0; k = 0
 loss_hist = np.zeros(100)
+conf_matr = np.zeros((2,2))
+conf_matr_hist = np.zeros((100,2,2))
 
 start_time = time.time()
 
@@ -199,20 +201,27 @@ with device:
         # Update weights
         opt.step()
         
+        # Confusion matrix
+        if n_in>n_dim:
+            conf_matr += util.confusion_matrix(output.detach().numpy(),targets.detach().numpy())
+        
         # Store history of average training loss
         if (i % print_every == 0):
             total_loss /= print_every
             print('{} % of the simulation complete'.format(round(i/n_batch*100)))
             print('Loss {:0.3f}'.format(total_loss))
+            if n_in>n_dim:
+                print('Accuracy {:0.1f} %'.format(100*np.trace(conf_matr)/np.sum(conf_matr)))
             loss_hist[k] = total_loss
-            total_loss = 0; k += 1
-     
+            conf_matr_hist[k] = conf_matr
+            total_loss = 0; conf_matr = np.zeros((2, 2)); k += 1
+
 # Save network
 if encode:
-    torch.save({'state_dict': net.state_dict(),'encoder': encoder.state_dict(),'loss_hist': loss_hist},
-              data_path + net_file + '.pth', _use_new_zipfile_serialization=False)
+    torch.save({'state_dict': net.state_dict(),'encoder': encoder.state_dict(),'loss_hist': loss_hist,
+                'conf_matr_hist': conf_matr_hist}, data_path + net_file + '.pth', _use_new_zipfile_serialization=False)
 else:
-    torch.save({'state_dict': net.state_dict(),'loss_hist': loss_hist},
+    torch.save({'state_dict': net.state_dict(),'loss_hist': loss_hist,'conf_matr_hist': conf_matr_hist},
               data_path + net_file + '.pth', _use_new_zipfile_serialization=False)
 
 end_time = time.time()

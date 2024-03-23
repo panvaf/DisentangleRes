@@ -33,7 +33,7 @@ batch_sz = 16       # batch size
 n_test = 40         # number of test batches
 trial_sz = 1        # draw multiple trials in a row
 n_fit = 5           # number of fits for each quadrant
-n_runs = 1          # number of trained networks for each number of tasks
+n_runs = 5          # number of trained networks for each number of tasks
 out_of_distribution = True
 keep_test_loss_hist = True
 save = False
@@ -41,7 +41,7 @@ split = None
 split_var = False
 activation = 'relu'
 filename = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask'
-encode = True
+encode = False
 noise_enc = False
 if encode:
     n_feat = 40 + (1 if n_in>n_dim else 0)
@@ -66,7 +66,7 @@ def seed_everything(seed):
     for env in tenvs_test: env.reset(seed=seed)
     for env in tenvs_train: env.reset(seed=seed)
 
-n_tasks = np.array([48])
+n_tasks = np.array([24])
 n_batch = np.array([5e3])
 
 # Tasks
@@ -114,7 +114,7 @@ else:
 
 # Device
 
-device = util.get_device()
+device = torch.device('cpu')
 
 # Baseline for r^2
 x = np.random.rand(100000) - .5

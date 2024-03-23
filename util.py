@@ -295,3 +295,39 @@ def encode(encoder,inp,n_dim,n_in):
         return torch.cat((inp[:,:,0].unsqueeze(2),inp_temp),dim=2)
     else:
         return inp_temp
+    
+    
+# Compute confusion matrix
+
+def confusion_matrix(outputs, targets, threshold=0):
+    """
+    Apply thresholding to model outputs, classify them into -1 or 1,
+    and compute the confusion matrix for binary classification.
+
+    Parameters:
+    - outputs: numpy array of model outputs, shape (batch_sz,)
+    - targets: numpy array of targets, shape (batch_sz,)
+    - threshold: float, the value used to classify outputs into -1 or 1
+
+    Returns:
+    - confusion_matrix: numpy array, shape (2, 2), format [[TN, FP], [FN, TP]]
+    """
+    # Classify model outputs based on the threshold
+    predictions = np.where(outputs >= threshold, 1, -1)
+    
+    # Initialize the confusion matrix
+    confusion_matrix = np.zeros((2, 2), dtype=int)
+    
+    # Calculate True Negatives (TN), False Positives (FP), False Negatives (FN), True Positives (TP)
+    TN = np.sum((predictions == -1) & (targets == -1))
+    FP = np.sum((predictions == 1) & (targets == -1))
+    FN = np.sum((predictions == -1) & (targets == 1))
+    TP = np.sum((predictions == 1) & (targets == 1))
+    
+    # Fill in the confusion matrix
+    confusion_matrix[0][0] = TN
+    confusion_matrix[0][1] = FP
+    confusion_matrix[1][0] = FN
+    confusion_matrix[1][1] = TP
+    
+    return confusion_matrix
