@@ -95,7 +95,7 @@ if encode:
     encoder.eval()
 
 # Visualize RNN activity
-activity_dict = {}; output_dict = {}; trial_info = {}
+activity_dict = {}; trial_info = {}
 
 for i in range(n_trial):
     
@@ -105,11 +105,9 @@ for i in range(n_trial):
     inp = torch.from_numpy(ob[np.newaxis, :, :]).type(torch.float)[:,:,-n_in:]
     if encode:
         inp = util.encode(encoder,inp,n_dim,n_in)
-    output, rnn_activity = net(inp)
+    rnn_activity, _ = net(inp)
     rnn_activity = rnn_activity[0, :, :].detach().numpy()
-    output = output[0, :, :].detach().numpy()
     activity_dict[i] = rnn_activity
-    output_dict[i] = output
     trial_info[i] = tenv.trial
 
 activity = np.concatenate(list(activity_dict[i] for i in range(n_trial)), axis=0)
@@ -218,7 +216,7 @@ for i in range(n_exam):
     inp = torch.from_numpy(ob[np.newaxis, :, :]).type(torch.float)[:,:,-n_in:]
     if encode:
         inp = util.encode(encoder,inp,n_dim,n_in)
-    _, rnn_activity = net(inp)
+    rnn_activity, _ = net(inp)
     rnn_activity = rnn_activity[0, :, :].detach().numpy()
     ex_activ_dict[i] = rnn_activity
     ex_trial_info[i] = env.trial
@@ -373,7 +371,7 @@ for i, x1 in enumerate(x1s):
         
         if encode:
             inp = util.encode(encoder,inp,n_dim,n_in)
-        _, rnn_activity = net(inp)
+        rnn_activity, _ = net(inp)
         ss_fr[i,j] = rnn_activity[0, -1, :].detach().numpy()
         
 # Correlations

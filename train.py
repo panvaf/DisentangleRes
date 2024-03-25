@@ -43,6 +43,7 @@ noise_enc = False   # Whether to noise after the encoder
 corr = 0            # Correlation between factors
 activation = 'relu' # activation function
 leaky = False        # whether the RNN is leaky
+network = 'LSTM'     # Network architecture
 lr = 1e-3           # Learning rate
 run = 0
 
@@ -68,7 +69,7 @@ n_grace = int(grace/dt); n_decision = int(timing['decision']/dt); n_trial = int(
 # Save location
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
 net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
-            (activation if activation != 'relu' else '') + \
+            (network if network != 'RNN' else '') + (activation if activation != 'relu' else '') + \
             ('NoLeak' if leaky == False else '') + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
             (('LR' + str(lr)) if lr != 3e-3 else '')  + \
@@ -130,7 +131,10 @@ for param in encoder.parameters():
 if encode:
     n_in = encoder[-1].out_features + (1 if n_in>n_dim else 0)
     
-net = RNN(n_in,n_neu,n_out*task_num,n_sd_net,activation,tau,dt,leaky).to(device)
+if network == 'RNN':
+    net = RNN(n_in,n_neu,n_out*task_num,n_sd_net,activation,tau,dt,leaky).to(device)
+elif network == 'LSTM':
+    net = nn.LSTM(n_in,n_neu,batch_first=True).to(device)
 
 # Decoder
 decoder = nn.Sequential(
@@ -189,7 +193,7 @@ with device:
             if noise_enc:
                 inputs += n_sd_enc * torch.randn_like(inputs)
             
-        _, fr = net(inputs)
+        fr, _ = net(inputs)
         output = decoder(fr)
         
         # Compute loss

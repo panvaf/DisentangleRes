@@ -253,7 +253,7 @@ with device:
                             if noise_enc:
                                 inputs += n_sd_enc * torch.randn_like(inputs)
                         
-                        net_out, fr = net(inputs)
+                        fr, _ = net(inputs)
                         output = ff_net(fr)
                         
                         # Compute loss
@@ -302,7 +302,7 @@ with device:
                                             if noise_enc:
                                                 inputs += n_sd_enc * torch.randn_like(inputs)
                                         
-                                        net_out, fr = net(inputs)
+                                        fr, _ = net(inputs)
                                         output = ff_net(fr)
                                         
                                         # Compute loss

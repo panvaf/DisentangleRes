@@ -72,7 +72,7 @@ class RNN(nn.Module):
         fr = torch.stack(fr, dim=1)
         out = torch.stack(out, dim=1)
         
-        return out, fr
+        return fr, out
     
     
     def reset_params(self):
