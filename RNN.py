@@ -9,7 +9,8 @@ import torch.nn as nn
 
 class RNN(nn.Module):
     
-    def __init__(self,inp_size,rec_size,out_size,n_sd=.1,activation='relu',tau=100,dt=10):
+    def __init__(self,inp_size,rec_size,out_size,n_sd=.1,activation='relu',
+                 tau=100,dt=10,leaky=True):
         super().__init__()
         
         # Constants
@@ -18,6 +19,7 @@ class RNN(nn.Module):
         self.n_sd = n_sd
         self.tau = tau
         self.alpha = dt / self.tau
+        self.leaky = leaky
         
         # Layers
         self.inp_to_rec = nn.Linear(inp_size, rec_size)
@@ -45,7 +47,10 @@ class RNN(nn.Module):
         
         h = self.inp_to_rec(inp) + self.rec_to_rec(r) + \
                     self.n_sd*torch.randn(self.rec_size)
-        r_new = (1 - self.alpha)*r + self.alpha*self.activation(h)
+        if self.leaky:  
+            r_new = (1 - self.alpha)*r + self.alpha*self.activation(h)
+        else:
+            r_new = r + self.alpha*self.activation(h)
         
         return r_new
 

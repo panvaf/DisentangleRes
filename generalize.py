@@ -35,13 +35,14 @@ trial_sz = 1        # draw multiple trials in a row
 n_fit = 5           # number of fits for each quadrant
 n_runs = 5          # number of trained networks for each number of tasks
 out_of_distribution = True
-keep_test_loss_hist = True
+keep_test_loss_hist = False
 save = False
 split = None
 split_var = False
 activation = 'relu'
-filename = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask'
-encode = False
+filename = 'LinCentOutTanhSL64NoLeakbatch1e5LR0.001Noise2NetN0nTrial1nTask'
+leaky = False if 'NoLeak' in filename else True
+encode = True
 noise_enc = False
 if encode:
     n_feat = 40 + (1 if n_in>n_dim else 0)
@@ -67,7 +68,7 @@ def seed_everything(seed):
     for env in tenvs_train: env.reset(seed=seed)
 
 n_tasks = np.array([24])
-n_batch = np.array([5e3])
+n_batch = np.array([1e3])
 
 # Tasks
 task = {'DenoiseQuads':tasks.DenoiseQuads}
@@ -138,7 +139,7 @@ with device:
             data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
             net_file = filename + str(n_task) + ('Mix' if encode else '') + (('run' + str(run)) if run != 0 else '')
             
-            net = RNN(n_feat,n_neu,n_task,n_sd_net,activation,tau,dt)
+            net = RNN(n_feat,n_neu,n_task,n_sd_net,activation,tau,dt,leaky)
             checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
             net.load_state_dict(checkpoint['state_dict'])
             

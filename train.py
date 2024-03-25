@@ -38,10 +38,11 @@ pen_end = False     # only penalize final time point
 trial_num = 1       # number of trials drawn in a row
 rand_pen = False    # randomly penalize a certain time point in the trial
 bound = 5           # DDM boundary
-encode = False      # Whether to nonlinearly mix the input features
+encode = True       # Whether to nonlinearly mix the input features
 noise_enc = False   # Whether to noise after the encoder
 corr = 0            # Correlation between factors
 activation = 'relu' # activation function
+leaky = False        # whether the RNN is leaky
 lr = 1e-3           # Learning rate
 run = 0
 
@@ -68,6 +69,7 @@ n_grace = int(grace/dt); n_decision = int(timing['decision']/dt); n_trial = int(
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
 net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
             (activation if activation != 'relu' else '') + \
+            ('NoLeak' if leaky == False else '') + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
             (('LR' + str(lr)) if lr != 3e-3 else '')  + \
             (('Noise' + str(n_sd_in)) if n_sd_in else '') + \
@@ -128,7 +130,7 @@ for param in encoder.parameters():
 if encode:
     n_in = encoder[-1].out_features + (1 if n_in>n_dim else 0)
     
-net = RNN(n_in,n_neu,n_out*task_num,n_sd_net,activation,tau,dt).to(device)
+net = RNN(n_in,n_neu,n_out*task_num,n_sd_net,activation,tau,dt,leaky).to(device)
 
 # Decoder
 decoder = nn.Sequential(

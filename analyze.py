@@ -74,6 +74,7 @@ data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
 #net_file = 'Joint64batch1e3'
 net_file = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask' + str(n_task) + \
             ('Mix' if encode else '')  + (('run' + str(run)) if run != 0 else '')
+leaky = False if 'NoLeak' in net_file else True
             
 # Encoder
 encoder = nn.Sequential(
@@ -84,7 +85,7 @@ encoder = nn.Sequential(
         nn.Linear(100,40)
         )
 
-net = RNN(n_feat,n_neu,task_num*n_task,0,activation,tau,dt)
+net = RNN(n_feat,n_neu,task_num*n_task,0,activation,tau,dt,leaky)
 checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
 net.load_state_dict(checkpoint['state_dict'])
 net.eval()
