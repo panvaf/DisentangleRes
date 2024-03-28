@@ -18,7 +18,7 @@ import time
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 # Tasks
-task = {"LinearClassificationBound":tasks.LinearClassificationBound}
+task = {"LinearClassificationCentOut":tasks.LinearClassificationCentOut}
 task_rules = util.assign_task_rules(task)
 task_num = len(task)
 
@@ -32,7 +32,7 @@ n_sd_in = 2         # standard deviation of input noise
 n_sd_net = 0        # standard deviation of network noise
 n_dim = 2           # dimensionality of state space
 print_every = int(n_batch/100)
-n_out = 2          # number of outputs per task
+n_out = 6          # number of outputs per task
 bal_err = False     # whether to balance penalization of decision vs. integration
 pen_end = False     # only penalize final time point
 trial_num = 1       # number of trials drawn in a row
@@ -44,6 +44,7 @@ corr = 0            # Correlation between factors
 activation = 'relu' # activation function
 leaky = True        # whether the RNN is leaky
 network = 'RNN'     # Network architecture
+init = None         # Initialization for RNN hidden layer
 lr = 1e-3           # Learning rate
 run = 0
 
@@ -55,10 +56,10 @@ if encode:
         n_sd_in = 0
 
 # Environment
-timing = {'fixation': 0,
+timing = {'fixation': 100,
           'stimulus': 2000,
           'delay': 0,
-          'decision': 0}
+          'decision': 100}
 t_task = int(sum(timing.values())/dt)
 grace = 200
 #thres = np.array([0.005, 0.02, 0.04, 0.07, 0.11, 0.15])
@@ -68,9 +69,9 @@ n_grace = int(grace/dt); n_decision = int(timing['decision']/dt); n_trial = int(
 
 # Save location
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinBoundTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
+net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
             (network if network != 'RNN' else '') + (activation if activation != 'relu' else '') + \
-            ('NoLeak' if leaky == False else '') + \
+            (init if init is not None else '') +  ('NoLeak' if leaky == False else '') + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
             (('LR' + str(lr)) if lr != 3e-3 else '')  + \
             (('Noise' + str(n_sd_in)) if n_sd_in else '') + \
@@ -132,7 +133,7 @@ if encode:
     n_in = encoder[-1].out_features + (1 if n_in>n_dim else 0)
     
 if network == 'RNN':
-    net = RNN(n_in,n_neu,n_out*task_num,n_sd_net,activation,tau,dt,leaky).to(device)
+    net = RNN(n_in,n_neu,n_out*task_num,n_sd_net,activation,tau,dt,leaky,init).to(device)
 elif network == 'LSTM':
     net = nn.LSTM(n_in,n_neu,batch_first=True).to(device)
 

@@ -4,13 +4,14 @@ Vanilla RNN class.
 
 import torch
 import torch.nn as nn
+import numpy as np
 
 # RNN class
 
 class RNN(nn.Module):
     
     def __init__(self,inp_size,rec_size,out_size,n_sd=.1,activation='relu',
-                 tau=100,dt=10,leaky=True):
+                 tau=100,dt=10,leaky=True,init=None):
         super().__init__()
         
         # Constants
@@ -25,6 +26,14 @@ class RNN(nn.Module):
         self.inp_to_rec = nn.Linear(inp_size, rec_size)
         self.rec_to_rec = nn.Linear(rec_size, rec_size)
         self.rec_to_out = nn.Linear(rec_size, out_size)
+        
+        # Recurrent weight initialization
+        if init == 'sparse':
+            sparsity = 0.15
+            std_sparse = np.sqrt(2 / (sparsity * rec_size))
+            nn.init.sparse_(self.rec_to_rec.weight, sparsity=1-sparsity, std=std_sparse)
+        elif init == 'ortho':
+            nn.init.orthogonal_(self.rec_to_rec.weight)
         
         # Activation function
         if activation == 'relu':

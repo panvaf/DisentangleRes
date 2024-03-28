@@ -37,7 +37,7 @@ dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd_in = 2         # standard deviation of input noise
 n_dim = 2           # dimensionality of state space
-n_in = n_dim    # number of inputs
+n_in = n_dim + 1    # number of inputs
 n_task = 6         # number of tasks
 n_trial = 40        # number of bulk example trials to plot
 n_exam = 5          # number of example points to plot with separate colors
@@ -53,15 +53,15 @@ else:
     n_feat = n_in
 
 # Tasks
-task = {"LinearClassificationCentOut":tasks.LinearClassificationBound}
+task = {"LinearClassificationCentOut":tasks.LinearClassificationCentOut}
 task_rules = util.assign_task_rules(task)
 task_num = len(task)
 
 # Environment
-timing = {'fixation': 0,
+timing = {'fixation': 100,
           'stimulus': 2000,
           'delay': 0,
-          'decision': 0}
+          'decision': 100}
 
 t_task = int(sum(timing.values())/dt)
 
@@ -72,7 +72,7 @@ tenvs = [value(timing=timing,sigma=0,n_task=n_task,n_dim=n_dim,thres=thres,
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
 #net_file = 'Joint64batch1e3'
-net_file = 'LinBoundTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask' + str(n_task) + \
+net_file = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask' + str(n_task) + \
             ('Mix' if encode else '')  + (('run' + str(run)) if run != 0 else '')
 leaky = False if 'NoLeak' in net_file else True
             

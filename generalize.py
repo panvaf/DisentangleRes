@@ -26,7 +26,7 @@ tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd_in = 2         # standard deviation of input noise
 n_sd_net = 0        # standard deviation of network noise
 n_dim = 2           # dimensionality of state space
-n_in = n_dim    # number of inputs
+n_in = n_dim + 1    # number of inputs
 n_ff = n_neu        # number of neurons in feedforward neural net
 n_out = n_dim       # number of outputs
 batch_sz = 16       # batch size
@@ -40,7 +40,7 @@ save = False
 split = None
 split_var = False
 activation = 'relu'
-filename = 'LinBoundTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask'
+filename = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask'
 leaky = False if 'NoLeak' in filename else True
 encode = True
 noise_enc = False
@@ -67,16 +67,16 @@ def seed_everything(seed):
     for env in tenvs_test: env.reset(seed=seed)
     for env in tenvs_train: env.reset(seed=seed)
 
-n_tasks = np.array([2,3,6,12,24])
-n_batch = np.array([2e3,2e3,3e3,2e3,2e3])
+n_tasks = np.array([6])
+n_batch = np.array([3e3])
 
 # Tasks
-task = {'DenoiseQuadsFreeRT':tasks.DenoiseQuadsFreeRT}
+task = {'DenoiseQuads':tasks.DenoiseQuads}
 #task_rules = util.assign_task_rules(task)
 task_num = len(task)
 
 # Environment
-timing = {'fixation': 0,
+timing = {'fixation': 100,
           'stimulus': 2000,
           'delay': 0,
           'decision': 100}
