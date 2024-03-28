@@ -18,7 +18,7 @@ import time
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 # Tasks
-task = {"LinearClassificationCentOut":tasks.LinearClassificationCentOut}
+task = {"LinearClassificationBound":tasks.LinearClassificationBound}
 task_rules = util.assign_task_rules(task)
 task_num = len(task)
 
@@ -32,7 +32,7 @@ n_sd_in = 2         # standard deviation of input noise
 n_sd_net = 0        # standard deviation of network noise
 n_dim = 2           # dimensionality of state space
 print_every = int(n_batch/100)
-n_out = 24          # number of outputs per task
+n_out = 2          # number of outputs per task
 bal_err = False     # whether to balance penalization of decision vs. integration
 pen_end = False     # only penalize final time point
 trial_num = 1       # number of trials drawn in a row
@@ -42,8 +42,8 @@ encode = True       # Whether to nonlinearly mix the input features
 noise_enc = False   # Whether to noise after the encoder
 corr = 0            # Correlation between factors
 activation = 'relu' # activation function
-leaky = False        # whether the RNN is leaky
-network = 'LSTM'     # Network architecture
+leaky = True        # whether the RNN is leaky
+network = 'RNN'     # Network architecture
 lr = 1e-3           # Learning rate
 run = 0
 
@@ -55,10 +55,10 @@ if encode:
         n_sd_in = 0
 
 # Environment
-timing = {'fixation': 100,
+timing = {'fixation': 0,
           'stimulus': 2000,
           'delay': 0,
-          'decision': 100}
+          'decision': 0}
 t_task = int(sum(timing.values())/dt)
 grace = 200
 #thres = np.array([0.005, 0.02, 0.04, 0.07, 0.11, 0.15])
@@ -68,7 +68,7 @@ n_grace = int(grace/dt); n_decision = int(timing['decision']/dt); n_trial = int(
 
 # Save location
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
+net_file = 'LinBoundTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
             (network if network != 'RNN' else '') + (activation if activation != 'relu' else '') + \
             ('NoLeak' if leaky == False else '') + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
@@ -194,7 +194,10 @@ with device:
                 inputs += n_sd_enc * torch.randn_like(inputs)
             
         fr, _ = net(inputs)
-        output = decoder(fr)
+        if 'Bound' in net_file:
+            output = bound*decoder(fr)
+        else:
+            output = decoder(fr)
         
         # Compute loss
         #loss = criterion(output.view(-1,n_out),target.flatten())
@@ -208,7 +211,7 @@ with device:
         opt.step()
         
         # Confusion matrix
-        if n_in>n_dim:
+        if 'Bound' not in net_file:
             conf_matr += util.confusion_matrix(output.detach().numpy(),targets.detach().numpy())
         
         # Store history of average training loss
@@ -216,7 +219,7 @@ with device:
             total_loss /= print_every
             print('{} % of the simulation complete'.format(round(i/n_batch*100)))
             print('Loss {:0.3f}'.format(total_loss))
-            if n_in>n_dim:
+            if 'Bound' not in net_file:
                 print('Accuracy {:0.1f} %'.format(100*np.trace(conf_matr)/np.sum(conf_matr)))
             loss_hist[k] = total_loss
             conf_matr_hist[k] = conf_matr
