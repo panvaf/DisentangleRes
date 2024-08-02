@@ -331,3 +331,39 @@ def confusion_matrix(outputs, targets, threshold=0):
     confusion_matrix[1][1] = TP
     
     return confusion_matrix
+
+
+
+def angles_between_vectors(vectors):
+    """
+    Calculate the angles between all pairs of vectors in degrees.
+    Returns a matrix with the upper triangular part containing angles,
+    and the lower triangular part (including diagonal) filled with NaN.
+    
+    Parameters:
+    vectors (np.ndarray): A 2D numpy array where each column is a vector.
+                          Shape: (vector_dim, number_of_vectors)
+    
+    Returns:
+    np.ndarray: A matrix where the upper triangular part contains angles in degrees,
+                and the lower triangular part (including diagonal) contains NaN.
+    """
+    # Normalize the vectors
+    normalized = vectors / np.linalg.norm(vectors, axis=0)
+    
+    # Calculate dot products between all pairs of vectors
+    dot_products = np.dot(normalized.T, normalized)
+    
+    # Clip the dot products to [-1, 1] to avoid numerical errors
+    dot_products = np.clip(dot_products, -1.0, 1.0)
+    
+    # Calculate the angles using arccos and convert to degrees
+    angles = np.degrees(np.arccos(dot_products))
+    
+    # Create a mask for the lower triangle and diagonal
+    mask = np.tril(np.ones_like(angles))
+    
+    # Apply the mask: set lower triangle and diagonal to NaN
+    angles[mask == 1] = np.nan
+    
+    return angles

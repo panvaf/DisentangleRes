@@ -34,10 +34,10 @@ n_test = 40         # number of test batches
 trial_sz = 1        # draw multiple trials in a row
 n_fit = 5           # number of fits for each quadrant
 n_runs = 5          # number of trained networks for each number of tasks
-out_of_distribution = True
+out_of_distribution = False
 keep_test_loss_hist = False
 save = False
-save_decoders = False
+save_decoders = True
 split = None
 split_var = False
 activation = 'relu'
@@ -68,8 +68,8 @@ def seed_everything(seed):
     for env in tenvs_test: env.reset(seed=seed)
     for env in tenvs_train: env.reset(seed=seed)
 
-n_tasks = np.array([6])
-n_batch = np.array([1e3])
+n_tasks = np.array([2,3,6,12,24,48,96,192])
+n_batch = np.array([2e3,1e3,1e3,1e3,1e3,1e3,1e3,1e3])
 
 # Tasks
 task = {'DenoiseQuads':tasks.DenoiseQuads}
@@ -114,9 +114,9 @@ if keep_test_loss_hist:
 else:
     test_loss_hist = np.zeros((np.size(n_tasks),n_runs,n_split,n_fits))
     
-# Store decoders
-if save_decoders:
-    dec = np.zeros((np.size(n_tasks),n_runs,n_split,n_fits,n_neu,n_dim))
+# Store decoders and angles
+dec = np.zeros((np.size(n_tasks),n_runs,n_split,n_fits,n_neu,n_dim))
+angles = np.zeros((np.size(n_tasks),n_runs,n_split,n_fits,n_dim,n_dim))
 
 # Device
 
@@ -344,9 +344,10 @@ with device:
                     mse = np.sum(errors**2)/np.size(errors)
                     r_sq[n,run,q,fit] = 1 - mse/var
                     
-                    if save_decoders:
-                        dec[n,run,q,fit,:] = ff_net[0].weight.detach().numpy().T
-            
+                    dec_weight = ff_net[0].weight.detach().numpy().T
+                    dec[n,run,q,fit,:] = dec_weight
+                    angles[n,run,q,fit,:] = util.angles_between_vectors(dec_weight)
+                    
                     #plt.hist(errors,100)
                     #plt.show()
 
@@ -391,6 +392,28 @@ plt.legend(frameon=False,ncol=1,bbox_to_anchor=(1,.4),title='RT')
 #plt.savefig('r_squared.png',bbox_inches='tight',format='png',dpi=300)
 #plt.savefig('r_squared.eps',bbox_inches='tight',format='eps',dpi=300)
 plt.show()
+
+# angle between latents
+perc_ang = np.nanpercentile(angles,[25,50,75],axis=(1,2,3,4,5))
+
+fig, ax = plt.subplots(figsize=(2.5,2))
+ax.scatter(n_tasks,perc_ang[1])
+ax.errorbar(n_tasks,perc_ang[1],yerr=[perc_ang[1]-perc_ang[0],perc_ang[2]-perc_ang[1]],linestyle='')
+ax.axhline(90,color='lightblue',linestyle='--',zorder=-1,linewidth=1)
+ax.set_ylabel('Angle of latents (deg)')
+ax.set_xlabel('# of tasks')
+ax.set_title('Input dimensionality $D={}$'.format(n_dim))
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_position(('data', 1.5))
+#ax.spines['bottom'].set_position(('data', .48))
+ax.set_xscale("log")
+ax.set_xticks([2,10,30])
+ax.set_xticklabels([2,10,30])
+#plt.savefig('ang_latents.png',bbox_inches='tight',format='png',dpi=300)
+#plt.savefig('ang_latents.eps',bbox_inches='tight',format='eps',dpi=300)
+plt.show()
+
 
 '''
 # Classification lines
@@ -451,7 +474,7 @@ if save:
     np.savez('r_squared.npz',r_sq=r_sq,train=train_loss_hist,test=test_loss_hist,n_tasks=n_tasks)
     
 if save_decoders:
-    np.savez('decoders.npz',dec=dec,train=train_loss_hist,test=test_loss_hist,n_tasks=n_tasks)
+    np.savez('decoders.npz',dec=dec,angles=angles,train=train_loss_hist,test=test_loss_hist,n_tasks=n_tasks)
 
 
 print(f"Elapsed time: {hours} hours, {minutes} minutes, and {seconds} seconds.")
