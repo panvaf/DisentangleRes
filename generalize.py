@@ -37,6 +37,7 @@ n_runs = 5          # number of trained networks for each number of tasks
 out_of_distribution = True
 keep_test_loss_hist = False
 save = False
+save_decoders = False
 split = None
 split_var = False
 activation = 'relu'
@@ -68,7 +69,7 @@ def seed_everything(seed):
     for env in tenvs_train: env.reset(seed=seed)
 
 n_tasks = np.array([6])
-n_batch = np.array([3e3])
+n_batch = np.array([1e3])
 
 # Tasks
 task = {'DenoiseQuads':tasks.DenoiseQuads}
@@ -112,6 +113,10 @@ if keep_test_loss_hist:
     test_loss_hist = np.zeros((np.size(n_tasks),n_runs,n_split,n_fits,100))
 else:
     test_loss_hist = np.zeros((np.size(n_tasks),n_runs,n_split,n_fits))
+    
+# Store decoders
+if save_decoders:
+    dec = np.zeros((np.size(n_tasks),n_runs,n_split,n_fits,n_neu,n_dim))
 
 # Device
 
@@ -338,6 +343,9 @@ with device:
                     errors = np.reshape(np.asarray(errors),(-1,n_out))
                     mse = np.sum(errors**2)/np.size(errors)
                     r_sq[n,run,q,fit] = 1 - mse/var
+                    
+                    if save_decoders:
+                        dec[n,run,q,fit,:] = ff_net[0].weight.detach().numpy().T
             
                     #plt.hist(errors,100)
                     #plt.show()
@@ -441,5 +449,9 @@ hours, minutes, seconds = util.convert_seconds(elapsed_time)
 # Save
 if save:
     np.savez('r_squared.npz',r_sq=r_sq,train=train_loss_hist,test=test_loss_hist,n_tasks=n_tasks)
+    
+if save_decoders:
+    np.savez('decoders.npz',dec=dec,train=train_loss_hist,test=test_loss_hist,n_tasks=n_tasks)
+
 
 print(f"Elapsed time: {hours} hours, {minutes} minutes, and {seconds} seconds.")
