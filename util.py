@@ -3,6 +3,7 @@ Various utilities.
 """
 
 import numpy as np
+from scipy import stats
 import torch
 import plotly.graph_objects as go
 import plotly.io as pio
@@ -367,3 +368,35 @@ def angles_between_vectors(vectors):
     angles[mask == 1] = np.nan
     
     return angles
+
+
+def mean_confidence_intervals(data, confidence=0.95):
+    """
+    Calculate the mean and confidence interval for each column in a matrix of measurements.
+    
+    Parameters:
+    data (np.ndarray): 2D array where each column is a set of measurements
+    confidence (float): The confidence level, default is 0.95 for 95% CI
+    
+    Returns:
+    tuple: (means, lower_bounds, upper_bounds)
+    """
+    data = np.array(data)
+    
+    if data.ndim == 1:
+        data = data.reshape(-1, 1)
+    
+    n_samples, n_columns = data.shape
+    
+    means = np.nanmean(data, axis=0)
+    ses = stats.sem(data, axis=0, nan_policy='omit')
+    
+    # Calculate the t-value for the given confidence level and degrees of freedom
+    t_values = stats.t.ppf((1 + confidence) / 2, n_samples - 1)
+    
+    margins_of_error = t_values * ses
+    
+    lower_bounds = means - margins_of_error
+    upper_bounds = means + margins_of_error
+    
+    return lower_bounds, means, upper_bounds
