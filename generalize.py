@@ -34,10 +34,10 @@ n_test = 40         # number of test batches
 trial_sz = 1        # draw multiple trials in a row
 n_fit = 5           # number of fits for each quadrant
 n_runs = 5          # number of trained networks for each number of tasks
-out_of_distribution = False
+out_of_distribution = True
 keep_test_loss_hist = False
 save = False
-save_decoders = True
+save_decoders = False
 split = None
 split_var = False
 activation = 'relu'
@@ -68,8 +68,8 @@ def seed_everything(seed):
     for env in tenvs_test: env.reset(seed=seed)
     for env in tenvs_train: env.reset(seed=seed)
 
-n_tasks = np.array([2,3,6,12,24,48,96,192])
-n_batch = np.array([2e3,1e3,1e3,1e3,1e3,1e3,1e3,1e3])
+n_tasks = np.array([24])
+n_batch = np.array([1e3])
 
 # Tasks
 task = {'DenoiseQuads':tasks.DenoiseQuads}

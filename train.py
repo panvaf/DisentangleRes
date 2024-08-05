@@ -32,7 +32,7 @@ n_sd_in = 2         # standard deviation of input noise
 n_sd_net = 0        # standard deviation of network noise
 n_dim = 2           # dimensionality of state space
 print_every = int(n_batch/100)
-n_out = 6          # number of outputs per task
+n_out = 24          # number of outputs per task
 bal_err = False     # whether to balance penalization of decision vs. integration
 pen_end = False     # only penalize final time point
 trial_num = 1       # number of trials drawn in a row
@@ -46,6 +46,8 @@ leaky = True        # whether the RNN is leaky
 network = 'RNN'     # Network architecture
 init = None         # Initialization for RNN hidden layer
 lr = 1e-3           # Learning rate
+autocorr = 0        # noise autocorrelation
+dist = 'gauss'      # noise distribution
 run = 0
 
 if encode:
@@ -75,6 +77,8 @@ net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound !=
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
             (('LR' + str(lr)) if lr != 3e-3 else '')  + \
             (('Noise' + str(n_sd_in)) if n_sd_in else '') + \
+            (('Autocorr' + str(autocorr)) if autocorr else '') + \
+            (dist if dist != 'gauss' else '') + \
             (('NetN' + str(n_sd_net)) if n_sd_net != 2 else '') + \
             (('tau' + str(tau)) if tau != 100 else '') + \
             (('nTrial' + str(trial_num)) if trial_num != 4 else '')  + \
@@ -88,7 +92,7 @@ net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound !=
 
 # Make supervised datasets
 tenvs = [value(timing=timing,sigma=n_sd_in,n_task=n_out,n_dim=n_dim,thres=bound,
-               corr=corr,rule_vec=task_rules[key]) for key, value in task.items()]
+               corr=corr,ar_coef=autocorr,dist=dist,rule_vec=task_rules[key]) for key, value in task.items()]
 
 datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_num*t_task) for tenv in tenvs]
 
