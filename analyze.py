@@ -45,7 +45,7 @@ thres = 5           # DDM boundary
 n_sweep = 8         # Number of stimuli values to sweep
 encode = True
 activation = 'relu'
-run = 0
+run = 4
 
 if encode:
     n_feat = 40 + (1 if n_in>n_dim else 0)
@@ -130,7 +130,7 @@ plt.show()
 
 # Find approximate fixed points, depending on network initial conditions
 
-# Freeze for parameters in the recurrent network
+# Freeze parameters in the recurrent network
 for param in net.parameters():
     param.requires_grad = False
     
@@ -190,7 +190,37 @@ for j in range(task_num):
             
     fxdpoints = hidden.detach().numpy()
     fixedpoints[:,j] = fxdpoints
+    
+# compute jacobian for every fixed point, and make eigenvalue plot along with
+# top 2 eigenvalues for every fixed point
+    
+fp = torch.from_numpy(fixedpoints.reshape(-1,n_neu)).float()
+# TODO remove duplicate fixed points
+sorted_eigenvals = np.empty(fp.shape, dtype=np.complex128)
 
+for i in range(fp.shape[0]):
+    jac = util.compute_jacobian(net, inp[i], fp[i])
+    jac_np = jac.detach().numpy()
+    eigenval, eigenvec = np.linalg.eig(jac_np)
+    
+    sorted_indices = np.argsort(eigenval.real)[::-1]
+    sorted_eigenvals[i] = eigenval[sorted_indices]
+    
+# plot eigenvalues for each fixed point separating top 2
+plt.figure(figsize=(5, 3))
+plt.scatter(sorted_eigenvals[:, 0].real, sorted_eigenvals[:, 0].imag, label='First', alpha=0.7, s=5)
+plt.scatter(sorted_eigenvals[:, 1].real, sorted_eigenvals[:, 1].imag, label='Second', alpha=0.7, s=5)
+plt.scatter(sorted_eigenvals[:, 2:].real, sorted_eigenvals[:, 2:].imag, label='Lower', alpha=0.7, s=5)
+plt.axhline(y=0, color='k', linestyle='--', linewidth=0.5)
+plt.axvline(x=0, color='k', linestyle='--', linewidth=0.5)
+plt.xlabel('Real part')
+plt.ylabel('Imaginary part')
+plt.title('Eigenvalues for Each Fixed Point')
+plt.legend(frameon=False,ncol=1,title='Eigenvalue order')
+plt.grid(True, alpha=0.3)
+plt.show()
+
+    
 # Obtain individual simulations to plot and compare location of trajectories
 tenvs = [value(timing=timing,sigma=n_sd_in,n_task=n_task,thres=thres,rule_vec=task_rules[key]) for key, value in task.items()]
 

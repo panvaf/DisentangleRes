@@ -400,3 +400,63 @@ def mean_confidence_intervals(data, confidence=0.95):
     upper_bounds = means + margins_of_error
     
     return lower_bounds, means, upper_bounds
+
+
+
+def find_variance_along_directions(data, directions):
+    # Standardize the data
+    
+    Q, R = np.linalg.qr(directions.T)
+    orthogonal_directions = Q.T
+    
+    # Project data onto orthogonalized directions
+    projections = np.dot(data, orthogonal_directions.T)
+    
+    # Compute variance along each orthogonal direction
+    variances = np.var(projections, axis=0, ddof=1)  # Using ddof=1 for sample variance
+    
+    # Compute the total variance of the original data
+    total_variance = np.var(data, axis=0, ddof=1).sum()
+    
+    # Calculate cumulative variance
+    cumulative_variance = np.cumsum(variances)
+    
+    # Percentage of variance explained
+    percentage_variance_explained = (variances / total_variance) * 100
+    
+    return variances, cumulative_variance, percentage_variance_explained
+
+
+def random_orthogonality_test(vectors, n_samples=1000):
+    """
+    Compare orthogonality of vectors to that of random vectors and obtain p-values
+    """
+    n_vectors = vectors.shape[1]
+    actual_dots = np.abs(np.dot(vectors.T, vectors))
+
+    random_dots = []
+    for _ in range(n_samples):
+        random_vecs = np.random.randn(64, n_vectors)
+        random_vecs /= np.linalg.norm(random_vecs, axis=0)
+        random_dots.append(np.abs(np.dot(random_vecs.T, random_vecs)))
+
+    random_dots = np.array(random_dots)
+    print(random_dots.shape)
+    p_values = np.mean(random_dots <= actual_dots, axis=0)
+
+    return p_values
+
+
+def compute_jacobian(net, inp, fp):
+    n_hidden = len(fp)
+    fp = fp.clone().requires_grad_(True)
+    deltah = net.dynamics(inp, fp) - fp
+    
+    jacobian = torch.zeros(n_hidden, n_hidden)
+    for i in range(n_hidden):
+        grad_output = torch.zeros_like(deltah)
+        grad_output[i] = 1.0
+        grad = torch.autograd.grad(deltah, fp, grad_outputs=grad_output, retain_graph=True)[0]
+        jacobian[i, :] = grad
+    
+    return jacobian
