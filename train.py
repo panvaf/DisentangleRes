@@ -28,7 +28,7 @@ task_num = len(task)
 # Constants
 n_neu = 64          # number of recurrent neurons
 batch_sz = 16       # batch size
-n_batch = 1e5       # number of batches
+n_batch = 2e4       # number of batches
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd_in = 2         # standard deviation of input noise
@@ -90,10 +90,10 @@ net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound !=
             (('nTrial' + str(trial_num)) if trial_num != 4 else '')  + \
             (('nDim' + str(n_dim)) if n_dim != 2 else '')  + \
             (('Corr' + str(corr)) if corr else '')  + \
-            (('nTask' + str(n_out)) if n_out != 2 else '')  + \
-            (('Delay' + str(timing['delay'])) if timing['delay'] != 0 else '')  + \
             (('nLayer' + str(n_layer)) if network == 'gpt-2' else '')  + \
             (('nHead' + str(n_head)) if network == 'gpt-2' else '')  + \
+            (('nTask' + str(n_out)) if n_out != 2 else '')  + \
+            (('Delay' + str(timing['delay'])) if timing['delay'] != 0 else '')  + \
             ('BalErr' if bal_err else '') + ('RandPen' if rand_pen else '') + \
             ('PenEnd' if pen_end else '') + ('Mix' if encode else '') + \
             ('nEnc' if noise_enc else '') + (('run' + str(run)) if run != 0 else '')
@@ -147,6 +147,7 @@ elif network == 'gpt-2':
     
     device = torch.device('mps')
     config = GPT2Config(
+        vocab_size=1,
         n_embd=n_neu,
         n_layer=n_layer,
         n_head=n_head,

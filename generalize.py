@@ -16,6 +16,8 @@ import util
 import matplotlib.pyplot as plt
 import random
 import time
+from transformers import GPT2Config
+from transformer import GPT2ContinuousInputs
 
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
@@ -34,6 +36,9 @@ n_test = 40         # number of test batches
 trial_sz = 1        # draw multiple trials in a row
 n_fit = 5           # number of fits for each quadrant
 n_runs = 5          # number of trained networks for each number of tasks
+# Transformer parameters
+n_layer = 1         # number of layers
+n_head = 8          # number of heads
 out_of_distribution = True
 keep_test_loss_hist = False
 save = False
@@ -41,7 +46,7 @@ save_decoders = False
 split = None
 split_var = False
 activation = 'relu'
-filename = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask'
+filename = 'LinCentOutTanhSL64gpt-2batch2e4LR0.001Noise2NetN0nTrial1nLayer1nHead8nTask'
 leaky = False if 'NoLeak' in filename else True
 encode = True
 noise_enc = False
@@ -146,6 +151,17 @@ with device:
             
             if 'LSTM' in net_file:
                 net = nn.LSTM(n_feat,n_neu,batch_first=True).to(device)
+            elif 'gpt-2' in net_file:
+                config = GPT2Config(
+                    vocab_size=1,
+                    n_embd=n_neu,
+                    n_layer=n_layer,
+                    n_head=n_head,
+                    n_positions=t_task,
+                    n_ctx=t_task,
+                    n_in=n_feat,
+                )
+                net = GPT2ContinuousInputs(config).to(device)
             else:
                 net = RNN(n_feat,n_neu,n_task,n_sd_net,activation,tau,dt,leaky)
             checkpoint = torch.load(os.path.join(data_path,net_file + '.pth'))
@@ -261,8 +277,21 @@ with device:
                             if noise_enc:
                                 inputs += n_sd_enc * torch.randn_like(inputs)
                         
-                        fr, _ = net(inputs)
-                        output = ff_net(fr)
+                        if 'gpt-2' in net_file:
+                            transformer_outputs = net(
+                                inputs_embeds=inputs,
+                                return_dict=True,
+                            )
+                        
+                            # Get hidden states
+                            hidden_states = transformer_outputs.last_hidden_state
+                        
+                            # Pass through decoder
+                            output = ff_net(hidden_states)
+                        
+                        else:
+                            fr, _ = net(inputs)
+                            output = ff_net(fr)
                         
                         # Compute loss
                         loss, _ = util.MSELoss_weighted(output[:,outputs,:], target[:,outputs,:], 1)
@@ -310,8 +339,21 @@ with device:
                                             if noise_enc:
                                                 inputs += n_sd_enc * torch.randn_like(inputs)
                                         
-                                        fr, _ = net(inputs)
-                                        output = ff_net(fr)
+                                        if 'gpt-2' in net_file:
+                                            transformer_outputs = net(
+                                                inputs_embeds=inputs,
+                                                return_dict=True,
+                                            )
+                                        
+                                            # Get hidden states
+                                            hidden_states = transformer_outputs.last_hidden_state
+                                        
+                                            # Pass through decoder
+                                            output = ff_net(hidden_states)
+                                        
+                                        else:
+                                            fr, _ = net(inputs)
+                                            output = ff_net(fr)
                                         
                                         # Compute loss
                                         loss, _ = util.MSELoss_weighted(output[:,outputs,:], target[:,outputs,:], 1)
