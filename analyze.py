@@ -207,20 +207,36 @@ for i in range(fp.shape[0]):
     sorted_eigenvals[i] = eigenval[sorted_indices]
     
 # plot eigenvalues for each fixed point separating top 2
+alpha = 0.4
 plt.figure(figsize=(5, 3))
-plt.scatter(sorted_eigenvals[:, 0].real, sorted_eigenvals[:, 0].imag, label='First', alpha=0.7, s=5)
-plt.scatter(sorted_eigenvals[:, 1].real, sorted_eigenvals[:, 1].imag, label='Second', alpha=0.7, s=5)
-plt.scatter(sorted_eigenvals[:, 2:].real, sorted_eigenvals[:, 2:].imag, label='Lower', alpha=0.7, s=5)
+plt.scatter(sorted_eigenvals[:, 0].real, sorted_eigenvals[:, 0].imag,
+            alpha=alpha, s=20, color='dodgerblue',zorder=2)
+plt.scatter(sorted_eigenvals[:, 1].real, sorted_eigenvals[:, 1].imag,
+            alpha=alpha, s=20, color='firebrick',zorder=1)
+plt.scatter(sorted_eigenvals[:, 2:].real, sorted_eigenvals[:, 2:].imag,
+            alpha=alpha, s=20, color = 'green',zorder=0)
+# Adding the unit circle centered at (-1, 0)
+circle = plt.Circle((-1, 0), 1, color='b', fill=False, linestyle='--', linewidth=1)
+plt.gca().add_artist(circle)
+# Plot an empty line for the legend
+plt.scatter([], [], label='First', s=20, color='dodgerblue')
+plt.scatter([], [], label='Second', s=20, color='firebrick')
+plt.scatter([], [], label='Lower', s=20, color = 'green')
+plt.plot([], [], color='b', linestyle='--', label='Stable', linewidth=1)
 plt.axhline(y=0, color='k', linestyle='--', linewidth=0.5)
 plt.axvline(x=0, color='k', linestyle='--', linewidth=0.5)
-plt.xlabel('Real part')
-plt.ylabel('Imaginary part')
+plt.xlabel(r'$\Re[\lambda]$')
+plt.ylabel(r'$\Im[\lambda]$')
 plt.title('Eigenvalues for Each Fixed Point')
-plt.legend(frameon=False,ncol=1,title='Eigenvalue order')
-plt.grid(True, alpha=0.3)
+plt.legend(frameon=False,ncol=1,title='Eigenvalues $\lambda$',bbox_to_anchor=(1,1))
+plt.ylim(-1.1, 1.1)
+ax.xaxis.set_major_locator(MultipleLocator(.5))
+plt.grid(True)
+#plt.savefig('eigenvals.eps',bbox_inches='tight',format='eps',dpi=300,transparent=True)
+#plt.savefig('eigenvals.png',bbox_inches='tight',format='png',dpi=300,transparent=True)
 plt.show()
 
-    
+
 # Obtain individual simulations to plot and compare location of trajectories
 tenvs = [value(timing=timing,sigma=n_sd_in,n_task=n_task,thres=thres,rule_vec=task_rules[key]) for key, value in task.items()]
 
