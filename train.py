@@ -14,6 +14,9 @@ from random import randint
 import os
 from pathlib import Path
 import time
+from transformers import GPT2Config
+from transformer import GPT2ContinuousInputs
+
 
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
@@ -43,11 +46,14 @@ noise_enc = False   # Whether to noise after the encoder
 corr = 0            # Correlation between factors
 activation = 'relu' # activation function
 leaky = True        # whether the RNN is leaky
-network = 'RNN'     # Network architecture
+network = 'gpt-2'     # Network architecture
 init = None         # Initialization for RNN hidden layer
 lr = 1e-3           # Learning rate
 autocorr = 0        # noise autocorrelation
 dist = 'gauss'      # noise distribution
+# Transformer parameters
+n_layer = 1         # number of layers
+n_head = 8          # number of heads
 run = 0
 
 if encode:
@@ -86,6 +92,8 @@ net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound !=
             (('Corr' + str(corr)) if corr else '')  + \
             (('nTask' + str(n_out)) if n_out != 2 else '')  + \
             (('Delay' + str(timing['delay'])) if timing['delay'] != 0 else '')  + \
+            (('nLayer' + str(n_layer)) if network == 'gpt-2' else '')  + \
+            (('nHead' + str(n_head)) if network == 'gpt-2' else '')  + \
             ('BalErr' if bal_err else '') + ('RandPen' if rand_pen else '') + \
             ('PenEnd' if pen_end else '') + ('Mix' if encode else '') + \
             ('nEnc' if noise_enc else '') + (('run' + str(run)) if run != 0 else '')
@@ -114,11 +122,7 @@ elif pen_end:
     mask = np.tile(mask,(1,trial_num,1))
 else:
     mask = np.ones((batch_sz,trial_num*t_task,n_out))
-
-
-# Device
-device = torch.device('cpu')
-
+    
 # Encoder
 encoder = nn.Sequential(
         nn.Linear(n_dim,100),
@@ -126,20 +130,41 @@ encoder = nn.Sequential(
         nn.Linear(100,100),
         nn.ReLU(),
         nn.Linear(100,40)
-        ).to(device)
-
-# Freeze encoder weights
-for param in encoder.parameters():
-    param.requires_grad = False
+        )
 
 # Initialize RNN
 if encode:
     n_in = encoder[-1].out_features + (1 if n_in>n_dim else 0)
+
+# Device
+device = torch.device('cpu')
     
 if network == 'RNN':
     net = RNN(n_in,n_neu,n_out*task_num,n_sd_net,activation,tau,dt,leaky,init).to(device)
 elif network == 'LSTM':
     net = nn.LSTM(n_in,n_neu,batch_first=True).to(device)
+elif network == 'gpt-2':
+    
+    device = torch.device('mps')
+    config = GPT2Config(
+        n_embd=n_neu,
+        n_layer=n_layer,
+        n_head=n_head,
+        n_positions=t_task,
+        n_ctx=t_task,
+        n_in=n_in,
+    )
+    
+    net = GPT2ContinuousInputs(config).to(device)
+    
+# size of model
+print("Number of params:", sum(p.numel() for p in net.parameters()))
+
+encoder.to(device)
+
+# Freeze encoder weights
+for param in encoder.parameters():
+    param.requires_grad = False
 
 # Decoder
 decoder = nn.Sequential(
@@ -185,9 +210,9 @@ with device:
         targets[:,:,task*n_out:(task+1)*n_out] = target
         
         # Turn into tensors
-        inputs = torch.from_numpy(inputs).type(torch.float)
-        targets = torch.from_numpy(targets).type(torch.long)
-        masker = torch.from_numpy(masker).type(torch.long)
+        inputs = torch.from_numpy(inputs).type(torch.float).to(device)
+        targets = torch.from_numpy(targets).type(torch.long).to(device)
+        masker = torch.from_numpy(masker).type(torch.long).to(device)
         
         # Empty gradient buffers
         opt.zero_grad()
@@ -198,11 +223,24 @@ with device:
             if noise_enc:
                 inputs += n_sd_enc * torch.randn_like(inputs)
             
-        fr, _ = net(inputs)
-        if 'Bound' in net_file:
-            output = bound*decoder(fr)
+        if network=='gpt-2':
+            transformer_outputs = net(
+                inputs_embeds=inputs,
+                return_dict=True,
+            )
+        
+            # Get hidden states
+            hidden_states = transformer_outputs.last_hidden_state
+        
+            # Pass through decoder
+            output = decoder(hidden_states)
+        
         else:
-            output = decoder(fr)
+            fr, _ = net(inputs)
+            if 'Bound' in net_file:
+                output = bound*decoder(fr)
+            else:
+                output = decoder(fr)
         
         # Compute loss
         #loss = criterion(output.view(-1,n_out),target.flatten())
@@ -217,7 +255,7 @@ with device:
         
         # Confusion matrix
         if 'Bound' not in net_file:
-            conf_matr += util.confusion_matrix(output.detach().numpy(),targets.detach().numpy())
+            conf_matr += util.confusion_matrix(output.cpu().detach().numpy(),targets.cpu().detach().numpy())
         
         # Store history of average training loss
         if (i % print_every == 0):

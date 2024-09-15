@@ -102,7 +102,7 @@ class GPT2ContinuousInputs(GPT2PreTrainedModel):
             use_cache=use_cache,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
-            return_dict=False,  # Force return_dict to True
+            return_dict=True,  # Force return_dict to True
         )
 
         return transformer_outputs
