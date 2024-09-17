@@ -7,6 +7,7 @@ from scipy import stats
 import torch
 import plotly.graph_objects as go
 import plotly.io as pio
+from sklearn.cluster import DBSCAN
 pio.renderers.default = "browser"
 
 def assign_task_rules(tasks):
@@ -300,7 +301,7 @@ def encode(encoder,inp,n_dim,n_in):
     
 # Compute confusion matrix
 
-def confusion_matrix(outputs, targets, threshold=0):
+def confusion_matrix(outputs, targets, threshold=0, labels = [-1,1]):
     """
     Apply thresholding to model outputs, classify them into -1 or 1,
     and compute the confusion matrix for binary classification.
@@ -314,16 +315,16 @@ def confusion_matrix(outputs, targets, threshold=0):
     - confusion_matrix: numpy array, shape (2, 2), format [[TN, FP], [FN, TP]]
     """
     # Classify model outputs based on the threshold
-    predictions = np.where(outputs >= threshold, 1, -1)
+    predictions = np.where(outputs >= threshold, labels[1], labels[0])
     
     # Initialize the confusion matrix
     confusion_matrix = np.zeros((2, 2), dtype=int)
     
     # Calculate True Negatives (TN), False Positives (FP), False Negatives (FN), True Positives (TP)
-    TN = np.sum((predictions == -1) & (targets == -1))
-    FP = np.sum((predictions == 1) & (targets == -1))
-    FN = np.sum((predictions == -1) & (targets == 1))
-    TP = np.sum((predictions == 1) & (targets == 1))
+    TN = np.sum((predictions == labels[0]) & (targets == labels[0]))
+    FP = np.sum((predictions == labels[1]) & (targets == labels[0]))
+    FN = np.sum((predictions == labels[0]) & (targets == labels[1]))
+    TP = np.sum((predictions == labels[1]) & (targets == labels[1]))
     
     # Fill in the confusion matrix
     confusion_matrix[0][0] = TN
@@ -460,3 +461,35 @@ def compute_jacobian(net, inp, fp):
         jacobian[i, :] = grad
     
     return jacobian
+
+
+def get_unique_fp(fixed_points,eps=0.5,min_samples=1):
+    """
+    Clusters fixed points according to distance and keeps only unique ones, i.e.
+    ones with distance greater than eps.
+    
+    Eps can be determined by e.g. looking at the elbow at nearest neighbor
+    distance graph.
+    """
+    
+    # Perform DBSCAN clustering
+    db = DBSCAN(eps=eps, min_samples=min_samples, metric='euclidean').fit(fixed_points)
+    
+    # Get labels assigned by DBSCAN
+    labels = db.labels_
+    
+    # Extract unique fixed points (one from each cluster)
+    unique_fixed_points = []
+    unique_labels = set(labels)
+    
+    for label in unique_labels:
+        if label != -1:  # Exclude noise points if any
+            indices = np.where(labels == label)[0]
+            # Choose the first fixed point in the cluster as representative
+            unique_fixed_points.append(fixed_points[indices[0]])
+    
+    unique_fixed_points = np.array(unique_fixed_points)
+    
+    print("Number of unique fixed points:", len(unique_fixed_points))
+    
+    return unique_fixed_points

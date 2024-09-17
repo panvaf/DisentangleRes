@@ -191,11 +191,12 @@ for j in range(task_num):
     fxdpoints = hidden.detach().numpy()
     fixedpoints[:,j] = fxdpoints
     
+# filter fixedpoints by distance to get unique fixed points
+unique_fixed_points = util.get_unique_fp(fixedpoints.reshape(-1,n_neu))
+
 # compute jacobian for every fixed point, and make eigenvalue plot along with
 # top 2 eigenvalues for every fixed point
-    
-fp = torch.from_numpy(fixedpoints.reshape(-1,n_neu)).float()
-# TODO remove duplicate fixed points
+fp = torch.from_numpy(unique_fixed_points).float()
 sorted_eigenvals = np.empty(fp.shape, dtype=np.complex128)
 
 for i in range(fp.shape[0]):
