@@ -2,7 +2,7 @@
 Transformer classes.
 """
 
-# Import box
+# Imports
 import torch
 from torch import nn
 from transformers import GPT2Config, GPT2PreTrainedModel, GPT2Model
@@ -13,7 +13,8 @@ from typing import Optional, Tuple, Union
 
 class GPT2ContinuousInputs(GPT2PreTrainedModel):
     """
-    GPT2 model with additional linear input layer and without output layer.
+    GPT2 model with additional linear input layer and without output layer,
+    that can handle continuous inputs.
     
     The model skips the embedding/tokenization steps and projects from
     directly from inputs to hidden state.

@@ -51,6 +51,7 @@ init = None         # Initialization for RNN hidden layer
 lr = 1e-3           # Learning rate
 autocorr = 0        # noise autocorrelation
 dist = 'gauss'      # noise distribution
+CE_loss = True     # whether to use CE loss and probabilistic output
 # Transformer parameters
 n_layer = 1         # number of layers
 n_head = 8          # number of heads
@@ -92,6 +93,7 @@ net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound !=
             (('Corr' + str(corr)) if corr else '')  + \
             (('nLayer' + str(n_layer)) if network == 'gpt-2' else '')  + \
             (('nHead' + str(n_head)) if network == 'gpt-2' else '')  + \
+            ('CEloss' if CE_loss else '') + \
             (('nTask' + str(n_out)) if n_out != 2 else '')  + \
             (('Delay' + str(timing['delay'])) if timing['delay'] != 0 else '')  + \
             ('BalErr' if bal_err else '') + ('RandPen' if rand_pen else '') + \
@@ -168,10 +170,19 @@ for param in encoder.parameters():
     param.requires_grad = False
 
 # Decoder
-decoder = nn.Sequential(
-        nn.Linear(n_neu,n_out*task_num),
-        nn.Tanh()
-        ).to(device)
+if CE_loss:
+    decoder = nn.Sequential(
+            nn.Linear(n_neu,n_out*task_num),
+            nn.Sigmoid()
+            ).to(device)
+    # for confusion matrix
+    threshold = .5; labels = [0,1]
+else:
+    decoder = nn.Sequential(
+            nn.Linear(n_neu,n_out*task_num),
+            nn.Tanh()
+            ).to(device)
+    threshold = 0; labels = [-1,1]
 
 # Optimizer
 opt = optim.Adam(net.parameters(), lr=lr)
@@ -194,6 +205,10 @@ with device:
         # Generate data for current batch
         inputs, target = dataset()
         
+        # Rescale output if using CE loss
+        if CE_loss:
+            target = target/2+.5
+        
         # Reshape so that batch is first dimension
         inputs = np.transpose(inputs,(1,0,2))
         target = np.transpose(target,(1,0,2))
@@ -212,8 +227,8 @@ with device:
         
         # Turn into tensors
         inputs = torch.from_numpy(inputs).type(torch.float).to(device)
-        targets = torch.from_numpy(targets).type(torch.long).to(device)
-        masker = torch.from_numpy(masker).type(torch.long).to(device)
+        targets = torch.from_numpy(targets).type(torch.float).to(device)
+        masker = torch.from_numpy(masker).type(torch.float).to(device)
         
         # Empty gradient buffers
         opt.zero_grad()
@@ -244,8 +259,11 @@ with device:
                 output = decoder(fr)
         
         # Compute loss
-        #loss = criterion(output.view(-1,n_out),target.flatten())
-        _, loss = util.MSELoss_weighted(output, targets, masker)
+        if CE_loss:
+            BCE_loss = nn.BCELoss(weight=masker)
+            loss = BCE_loss(output,targets)
+        else:
+            _, loss = util.MSELoss_weighted(output, targets, masker)
         total_loss += loss.item()
         
         # Backpopagate loss
@@ -256,7 +274,9 @@ with device:
         
         # Confusion matrix
         if 'Bound' not in net_file:
-            conf_matr += util.confusion_matrix(output.cpu().detach().numpy(),targets.cpu().detach().numpy())
+            conf_matr += util.confusion_matrix(output.cpu().detach().numpy(),
+                                               targets.cpu().detach().numpy(),
+                                               threshold=threshold,labels=labels)
         
         # Store history of average training loss
         if (i % print_every == 0):
