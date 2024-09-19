@@ -1,5 +1,5 @@
 """
-Train recurrent neural network.
+Train autoregressive neural networks.
 """
 
 import neurogym as ngym
@@ -78,7 +78,7 @@ n_grace = int(grace/dt); n_decision = int(timing['decision']/dt); n_trial = int(
 
 # Save location
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
+net_file = 'LinProbSigmoidSL' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
             (network if network != 'RNN' else '') + (activation if activation != 'relu' else '') + \
             (init if init is not None else '') +  ('NoLeak' if leaky == False else '') + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \
