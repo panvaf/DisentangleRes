@@ -46,7 +46,7 @@ save_decoders = False
 split = None
 split_var = False
 activation = 'relu'
-filename = 'LinCentOutTanhSL64gpt-2batch2e4LR0.001Noise2NetN0nTrial1nLayer1nHead8CElossnTask'
+filename = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask'
 leaky = False if 'NoLeak' in filename else True
 encode = True
 noise_enc = False
@@ -73,8 +73,8 @@ def seed_everything(seed):
     for env in tenvs_test: env.reset(seed=seed)
     for env in tenvs_train: env.reset(seed=seed)
 
-n_tasks = np.array([24])
-n_batch = np.array([1e3])
+n_tasks = np.array([2,3,6,12,24,48,96,192])
+n_batch = np.array([2e3,1e3,1e3,1e3,1e3,1e3,1e3,1e3])
 
 # Tasks
 task = {'DenoiseQuads':tasks.DenoiseQuads}

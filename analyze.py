@@ -209,27 +209,26 @@ for i in range(fp.shape[0]):
     
 # plot eigenvalues for each fixed point separating top 2
 alpha = 0.4
-plt.figure(figsize=(5, 3))
+plt.figure(figsize=(4, 2.5))
 plt.scatter(sorted_eigenvals[:, 0].real, sorted_eigenvals[:, 0].imag,
-            alpha=alpha, s=20, color='dodgerblue',zorder=2)
+            alpha=alpha, s=40, color='dodgerblue',zorder=2)
 plt.scatter(sorted_eigenvals[:, 1].real, sorted_eigenvals[:, 1].imag,
-            alpha=alpha, s=20, color='firebrick',zorder=1)
+            alpha=alpha, s=40, color='firebrick',zorder=1)
 plt.scatter(sorted_eigenvals[:, 2:].real, sorted_eigenvals[:, 2:].imag,
-            alpha=alpha, s=20, color = 'green',zorder=0)
+            alpha=alpha, s=40, color = 'green',zorder=0)
 # Adding the unit circle centered at (-1, 0)
 circle = plt.Circle((-1, 0), 1, color='b', fill=False, linestyle='--', linewidth=1)
 plt.gca().add_artist(circle)
 # Plot an empty line for the legend
-plt.scatter([], [], label='First', s=20, color='dodgerblue')
-plt.scatter([], [], label='Second', s=20, color='firebrick')
-plt.scatter([], [], label='Lower', s=20, color = 'green')
+plt.scatter([], [], label='First', s=40, color='dodgerblue')
+plt.scatter([], [], label='Second', s=40, color='firebrick')
+plt.scatter([], [], label='Lower', s=40, color = 'green')
 plt.plot([], [], color='b', linestyle='--', label='Stable', linewidth=1)
 plt.axhline(y=0, color='k', linestyle='--', linewidth=0.5)
 plt.axvline(x=0, color='k', linestyle='--', linewidth=0.5)
 plt.xlabel(r'$\Re[\lambda]$')
 plt.ylabel(r'$\Im[\lambda]$')
-plt.title('Eigenvalues for Each Fixed Point')
-plt.legend(frameon=False,ncol=1,title='Eigenvalues $\lambda$',bbox_to_anchor=(1,1))
+plt.legend(frameon=False,ncol=4,title='Eigenvalues $\lambda$ for every fixed point',bbox_to_anchor=(1.15,1.4))
 plt.ylim(-1.1, 1.1)
 ax.xaxis.set_major_locator(MultipleLocator(.5))
 plt.grid(True)
@@ -431,7 +430,7 @@ x1corr = np.reshape(x1corr,(int(np.sqrt(n_neu)),int(np.sqrt(n_neu))))
 x2corr = np.reshape(x2corr,(int(np.sqrt(n_neu)),int(np.sqrt(n_neu))))
 
 # Plot activity
-fig, axes = plt.subplots(8, 8, figsize=(8, 8))
+fig, axes = plt.subplots(8, 8, figsize=(6, 6))
 
 for i in range(n_sweep):
     for j in range(n_sweep):
@@ -449,14 +448,14 @@ cbar.set_label('Firing rate (spikes/s)')
 fig.text(0.5, 0.08, '$x_1$', ha='center')
 fig.text(0.08, 0.5, '$x_2$', va='center', rotation='vertical')
 
-#plt.savefig('activ.png',bbox_inches='tight',format='png',dpi=300)
-#plt.savefig('activ.eps',bbox_inches='tight',format='eps',dpi=300)
+#plt.savefig('activ_rnn.png',bbox_inches='tight',format='png',dpi=300,transparent=True)
+#plt.savefig('activ_rnn.eps',bbox_inches='tight',format='eps',dpi=300,transparent=True)
 plt.show()
 
 
 # Plot correlations
 
-fig, axes = plt.subplots(1, 2, figsize=(4, 2))
+fig, axes = plt.subplots(2, 1, figsize=(1.8, 3.5))
 
 im1 = axes[0].imshow(x1corr, cmap='RdBu')
 axes[0].set_title('$x_1$')
@@ -469,12 +468,12 @@ axes[1].set_xticks([])
 axes[1].set_yticks([])        
 
 # Create a common colorbar
-cax = fig.add_axes([0.92, 0.15, 0.02, 0.7])  # [x, y, width, height]
+cax = fig.add_axes([0.92, 0.25, 0.04, 0.35])   # [x, y, width, height]
 cbar = plt.colorbar(im1, cax=cax)
 cbar.set_label('Correlation coefficient')
 
-#plt.savefig('corr.png',bbox_inches='tight',format='png',dpi=300)
-#plt.savefig('corr.eps',bbox_inches='tight',format='eps',dpi=300)
+#plt.savefig('corr_rnn.png',bbox_inches='tight',format='png',dpi=300,transparent=True)
+#plt.savefig('corr_rnn.eps',bbox_inches='tight',format='eps',dpi=300,transparent=True)
 
 plt.show()
 

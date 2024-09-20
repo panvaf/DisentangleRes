@@ -28,7 +28,7 @@ task_num = len(task)
 # Constants
 n_neu = 64          # number of recurrent neurons
 batch_sz = 16       # batch size
-n_batch = 2e4       # number of batches
+n_batch = 1e5       # number of batches
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd_in = 2         # standard deviation of input noise
@@ -46,12 +46,12 @@ noise_enc = False   # Whether to noise after the encoder
 corr = 0            # Correlation between factors
 activation = 'relu' # activation function
 leaky = True        # whether the RNN is leaky
-network = 'gpt-2'     # Network architecture
+network = 'RNN'     # Network architecture
 init = None         # Initialization for RNN hidden layer
 lr = 1e-3           # Learning rate
 autocorr = 0        # noise autocorrelation
 dist = 'gauss'      # noise distribution
-CE_loss = True     # whether to use CE loss and probabilistic output
+CE_loss = False     # whether to use CE loss and probabilistic output
 # Transformer parameters
 n_layer = 1         # number of layers
 n_head = 8          # number of heads
@@ -78,7 +78,7 @@ n_grace = int(grace/dt); n_decision = int(timing['decision']/dt); n_trial = int(
 
 # Save location
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinProbSigmoidSL' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
+net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
             (network if network != 'RNN' else '') + (activation if activation != 'relu' else '') + \
             (init if init is not None else '') +  ('NoLeak' if leaky == False else '') + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \

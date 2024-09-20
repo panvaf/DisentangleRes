@@ -117,7 +117,7 @@ max_abs = max(np.abs(act[i,j]).max() for i in range(n_sweep) for j in range(n_sw
 cmap = LinearSegmentedColormap.from_list('GreyGold', ['darkgoldenrod', 'white', 'dimgrey'])
 
 # Plot activity
-fig, axes = plt.subplots(8, 8, figsize=(8, 8))
+fig, axes = plt.subplots(8, 8, figsize=(6, 6))
 
 for i in range(n_sweep):
     for j in range(n_sweep):
@@ -146,7 +146,7 @@ plt.show()
 
 # Plot correlations
 
-fig, axes = plt.subplots(1, 2, figsize=(4, 2))
+fig, axes = plt.subplots(2, 1, figsize=(1.8, 3.5))
 
 im1 = axes[0].imshow(x1corr, cmap='RdBu')
 axes[0].set_title('$x_1$')
@@ -159,7 +159,7 @@ axes[1].set_xticks([])
 axes[1].set_yticks([])        
 
 # Create a common colorbar
-cax = fig.add_axes([0.92, 0.15, 0.02, 0.7])  # [x, y, width, height]
+cax = fig.add_axes([0.92, 0.25, 0.04, 0.35])  # [x, y, width, height]
 cbar = plt.colorbar(im1, cax=cax)
 cbar.set_label('Correlation coefficient')
 
