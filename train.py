@@ -51,7 +51,7 @@ init = None         # Initialization for RNN hidden layer
 lr = 1e-3           # Learning rate
 autocorr = 0        # noise autocorrelation
 dist = 'gauss'      # noise distribution
-CE_loss = False     # whether to use CE loss and probabilistic output
+CE_loss = True      # whether to use CE loss and probabilistic output
 # Transformer parameters
 n_layer = 1         # number of layers
 n_head = 8          # number of heads
@@ -78,7 +78,7 @@ n_grace = int(grace/dt); n_decision = int(timing['decision']/dt); n_trial = int(
 
 # Save location
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-net_file = 'LinCentOutTanhSL' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
+net_file = 'LinProbSigmoidSL' + str(n_neu) + (('Bound' + str(bound)) if bound != 5 else '') + \
             (network if network != 'RNN' else '') + (activation if activation != 'relu' else '') + \
             (init if init is not None else '') +  ('NoLeak' if leaky == False else '') + \
             (('batch' + format(n_batch,'.0e').replace('+0','')) if not n_batch==1e4 else '') + \

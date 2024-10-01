@@ -46,7 +46,7 @@ save_decoders = False
 split = None
 split_var = False
 activation = 'relu'
-filename = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask'
+filename = 'LinProbSigmoidSL64batch1e5LR0.001Noise2NetN0nTrial1CElossnTask'
 leaky = False if 'NoLeak' in filename else True
 encode = True
 noise_enc = False
@@ -73,8 +73,8 @@ def seed_everything(seed):
     for env in tenvs_test: env.reset(seed=seed)
     for env in tenvs_train: env.reset(seed=seed)
 
-n_tasks = np.array([2,3,6,12,24,48,96,192])
-n_batch = np.array([2e3,1e3,1e3,1e3,1e3,1e3,1e3,1e3])
+n_tasks = np.array([2,3,6,12,24])
+n_batch = np.array([3e3,3e3,2e3,1e3,1e3])
 
 # Tasks
 task = {'DenoiseQuads':tasks.DenoiseQuads}
@@ -431,8 +431,8 @@ ax.set_xticks([2,10,30])
 ax.set_xticklabels([2,10,30])
 plt.ylim([0.5,1])
 plt.legend(frameon=False,ncol=1,bbox_to_anchor=(1,.4),title='RT')
-#plt.savefig('r_squared.png',bbox_inches='tight',format='png',dpi=300)
-#plt.savefig('r_squared.eps',bbox_inches='tight',format='eps',dpi=300)
+#plt.savefig('r_squared.png',bbox_inches='tight',format='png',dpi=300,transparent=True)
+#plt.savefig('r_squared.eps',bbox_inches='tight',format='eps',dpi=300,transparent=True)
 plt.show()
 
 # angle between latents
@@ -452,8 +452,8 @@ ax.spines['left'].set_position(('data', 1.5))
 ax.set_xscale("log")
 ax.set_xticks([2,10,30])
 ax.set_xticklabels([2,10,30])
-#plt.savefig('ang_latents.png',bbox_inches='tight',format='png',dpi=300)
-#plt.savefig('ang_latents.eps',bbox_inches='tight',format='eps',dpi=300)
+#plt.savefig('ang_latents.png',bbox_inches='tight',format='png',dpi=300,transparent=True)
+#plt.savefig('ang_latents.eps',bbox_inches='tight',format='eps',dpi=300,transparent=True)
 plt.show()
 
 
@@ -482,7 +482,7 @@ ax.spines['bottom'].set_position(('data', -.1))
 #plt.legend(prop={'size': SMALL_SIZE},frameon=False,ncol=2,bbox_to_anchor=(.1,1))
 plt.xlim([0,22])
 plt.ylim([0,.7])
-#plt.savefig('evidence2.png',bbox_inches='tight',format='png',dpi=300)
+#plt.savefig('evidence2.png',bbox_inches='tight',format='png',dpi=300,transparent=True)
 plt.show()
 
 # Plot loss history
@@ -504,7 +504,7 @@ for n, n_task in enumerate(n_tasks):
     ax.spines['right'].set_visible(False)
     plt.ylim([0,.1])
     plt.legend(prop={'size': SMALL_SIZE},frameon=False,ncol=1)
-    #plt.savefig('loss.png',bbox_inches='tight',format='png',dpi=300)
+    #plt.savefig('loss.png',bbox_inches='tight',format='png',dpi=300,transparent=True)
     plt.show()
 
 end_time = time.time()
