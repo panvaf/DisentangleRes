@@ -237,6 +237,26 @@ plt.grid(True)
 plt.show()
 
 
+# Quantify and plot time-scale amplifications due to attractor dynamics
+
+# Eigenvalues of the forward system (not the difference system)
+mu = np.unique(sorted_eigenvals[:,0:2].real.flatten() + 1)
+
+# Network time scales of a discrete system
+tau_net = - dt / np.log(np.abs(mu))
+
+# time scale amplification factor p
+p = tau_net/tau
+
+# plot histogram
+lim = 50
+plt.hist(p,1000)
+plt.title('Network timescale amplification due to attractor dynamics')
+plt.xlabel('Amplification factor $p$')
+plt.xlim([-lim,lim])
+plt.show()
+
+
 # Obtain individual simulations to plot and compare location of trajectories
 tenvs = [value(timing=timing,sigma=n_sd_in,n_task=n_task,thres=thres,rule_vec=task_rules[key]) for key, value in task.items()]
 
