@@ -104,3 +104,5 @@ for n, n_task in enumerate(n_tasks):
         fr = fr[:,-2,:].detach().numpy()
         
         sparsity[n,run] = (fr>0).sum()/fr.size*100
+        
+        sparsity_gallant[n,run] = np.mean(util.compute_sparseness(fr))*100

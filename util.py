@@ -493,3 +493,37 @@ def get_unique_fp(fixed_points,eps=0.5,min_samples=1):
     print("Number of unique fixed points:", len(unique_fixed_points))
     
     return unique_fixed_points
+
+
+
+def compute_sparseness(firing_rates):
+    """
+    Computes the sparseness of neural responses for a given firing rate matrix,
+    handling cases where all firing rates of a neuron are zero.
+
+    Parameters:
+        firing_rates (np.ndarray): A 2D array of shape (m, n), where m is the number of movie frames 
+                                   and n is the number of neurons. Each element represents the firing rate
+                                   of a neuron for a particular frame.
+
+    Returns:
+        np.ndarray: A 1D array of sparseness values for each neuron (length n).
+                    Returns 100% sparseness for neurons with all zero firing rates.
+    """
+    # Number of movie frames (m) and neurons (n)
+    m, n = firing_rates.shape
+
+    # Compute the sparseness for each neuron
+    sparseness_values = []
+    for i in range(n):
+        ri = firing_rates[:, i]
+        if np.all(ri == 0):
+            # Handle case where all firing rates are zero
+            sparseness_values.append(1.0)  # Maximum sparseness (100%)
+        else:
+            numerator = (ri.mean()) ** 2
+            denominator = (ri ** 2).mean()
+            S = (1 - (numerator / denominator)) / (1 - (1 / m))
+            sparseness_values.append(S)
+
+    return np.array(sparseness_values)
