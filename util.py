@@ -7,6 +7,7 @@ from scipy import stats
 import torch
 import plotly.graph_objects as go
 import plotly.io as pio
+import scipy.stats as stats
 from sklearn.cluster import DBSCAN
 pio.renderers.default = "browser"
 
@@ -527,3 +528,41 @@ def compute_sparseness(firing_rates):
             sparseness_values.append(S)
 
     return np.array(sparseness_values)
+
+
+
+def network_mean_and_ci(data, confidence_level=0.95):
+    """
+    Computes the mean and confidence intervals of values for row.
+
+    Parameters:
+        data (np.ndarray): A 3D array of shape (tasks, networks, neurons).
+        confidence_level (float): Confidence level for confidence intervals (default: 0.95).
+
+    """
+    tasks, networks, neurons = data.shape
+    means = np.zeros((tasks,networks))
+    confidence_intervals = np.zeros((tasks,networks,2))
+    std_devs = np.zeros((tasks,networks))
+    iqrs = np.zeros((tasks,networks,2))
+    
+    for i in range(tasks):
+        
+        for j in range(networks):
+        
+            c_data = data[i,j]
+            
+            # Compute mean and confidence intervals
+            mean = np.mean(c_data)
+            sem = stats.sem(c_data)
+            ci = stats.t.interval(confidence_level, len(c_data) - 1, loc=mean, scale=sem)
+            
+            means[i,j] = mean
+            confidence_intervals[i,j] = np.array(ci)
+            
+            std_devs[i,j] = np.std(c_data)
+            
+            iqrs[i,j]= [np.percentile(c_data, 25), np.percentile(c_data, 75)]
+    
+    
+    return means, confidence_intervals

@@ -11,6 +11,7 @@ import numpy as np
 import util
 import tasks
 import neurogym as ngym
+import matplotlib.pyplot as plt
 
 # Parameters
 n_neu = 64          # number of recurrent neurons
@@ -24,6 +25,7 @@ n_runs = 5
 filename = 'LinProbSigmoidSL64batch1e5LR0.001Noise2NetN0nTrial1CElossnTask'
 leaky = False if 'NoLeak' in filename else True
 encode = True
+save = False
 
 if encode:
     n_feat = 40 + (1 if n_in>n_dim else 0)
@@ -35,7 +37,7 @@ task = {"LinearClassificationHighDim":tasks.LinearClassificationHighDim}
 task_rules = util.assign_task_rules(task)
 task_num = len(task)
 
-n_tasks = np.array([3,6,9,12])
+n_tasks = np.array([2,3,6,12,24])
 
 # Environment
 timing = {'fixation': 100,
@@ -51,7 +53,7 @@ device = torch.device('cpu')
 
 # initialize
 sparsity = np.zeros((len(n_tasks),n_runs))
-sparsity_gallant = np.zeros((len(n_tasks),n_runs))
+sparsity_gallant = np.zeros((len(n_tasks),n_runs,n_neu))
 
 for n, n_task in enumerate(n_tasks):
     
@@ -105,4 +107,50 @@ for n, n_task in enumerate(n_tasks):
         
         sparsity[n,run] = (fr>0).sum()/fr.size*100
         
-        sparsity_gallant[n,run] = np.mean(util.compute_sparseness(fr))*100
+        sparsity_gallant[n,run] = util.compute_sparseness(fr)*100
+        
+
+# plots
+
+# Fontsize appropriate for plots
+SMALL_SIZE = 10
+MEDIUM_SIZE = 12
+BIGGER_SIZE = 14
+
+plt.rc('font', size=MEDIUM_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=MEDIUM_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=MEDIUM_SIZE)     # fontsize of the x and y labels
+plt.rc('xtick', labelsize=SMALL_SIZE)     # fontsize of the tick labels
+plt.rc('ytick', labelsize=SMALL_SIZE)     # fontsize of the tick labels
+plt.rc('legend', fontsize=SMALL_SIZE)     # legend fontsize
+plt.rc('figure', titlesize=MEDIUM_SIZE)   # fontsize of the figure title
+
+# Compute mean and confidence intervals for each number of tasks
+means, ci = util.network_mean_and_ci(sparsity_gallant)
+
+# add jitter
+jitter_scale = 0.1  # Adjust for desired amount of spread
+jitter = np.random.uniform(-jitter_scale, jitter_scale, means.shape)
+
+# plot
+fig, ax = plt.subplots(figsize=(2.5,2))
+for i in range(means.shape[1]):  # Loop through the 5 entries per task
+    ax.scatter(n_tasks * (1 + jitter[:, i]), means[:, i], color = 'tab:blue', s=10, label=f'Category {i+1}' if i == 0 else None)
+ax.set_ylabel('Sparsity ($\%$)')
+ax.set_xlabel('# of tasks')
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_position(('data', 1.5))
+ax.spines['bottom'].set_position(('data', -5))
+ax.set_xscale("log")
+ax.set_xticks([2,10,30])
+ax.set_xticklabels([2,10,30])
+plt.ylim([0,100])
+#plt.legend(frameon=False,ncol=1,bbox_to_anchor=(1,.4),title='RT')
+#plt.savefig('r_squared.png',bbox_inches='tight',format='png',dpi=300,transparent=True)
+#plt.savefig('r_squared.eps',bbox_inches='tight',format='eps',dpi=300,transparent=True)
+plt.show()
+
+# Save
+if save:
+    np.savez('sparsity.npz',sparsity=means,confidence_intervals=ci,n_tasks=n_tasks)
