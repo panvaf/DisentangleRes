@@ -45,6 +45,7 @@ encode = True       # Whether to nonlinearly mix the input features
 noise_enc = False   # Whether to noise after the encoder
 corr = 0            # Correlation between factors
 activation = 'relu' # activation function
+activ_enc = 'relu'  # encoder activation function
 leaky = True        # whether the RNN is leaky
 network = 'RNN'     # Network architecture
 init = None         # Initialization for RNN hidden layer
@@ -98,7 +99,8 @@ net_file = 'LinProbSigmoidSL' + str(n_neu) + (('Bound' + str(bound)) if bound !=
             (('Delay' + str(timing['delay'])) if timing['delay'] != 0 else '')  + \
             ('BalErr' if bal_err else '') + ('RandPen' if rand_pen else '') + \
             ('PenEnd' if pen_end else '') + ('Mix' if encode else '') + \
-            ('nEnc' if noise_enc else '') + (('run' + str(run)) if run != 0 else '')
+            ('nEnc' if noise_enc else '') + (activ_enc if activ_enc != 'relu' else '') + \
+            (('run' + str(run)) if run != 0 else '')
 
 # Make supervised datasets
 tenvs = [value(timing=timing,sigma=n_sd_in,n_task=n_out,n_dim=n_dim,thres=bound,
@@ -125,12 +127,18 @@ elif pen_end:
 else:
     mask = np.ones((batch_sz,trial_num*t_task,n_out))
     
+match activ_enc:
+    case 'relu':
+        activ = nn.ReLU()    
+    case 'Quad':
+        activ = util.Quadratic()
+
 # Encoder
 encoder = nn.Sequential(
         nn.Linear(n_dim,100),
-        nn.ReLU(),
+        activ,
         nn.Linear(100,100),
-        nn.ReLU(),
+        activ,
         nn.Linear(100,40)
         )
 

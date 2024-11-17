@@ -18,13 +18,14 @@ n_neu = 64          # number of recurrent neurons
 dt = 100            # step size
 tau = 100           # neuronal time constant (synaptic+membrane)
 n_sd_in = 0         # standard deviation of input noise
-n_dim = 2          # dimensionality of state space
+n_dim = 2           # dimensionality of state space
 n_in = n_dim + 1    # number of inputs
 n_sample = 1000     # Number of stimuli values to sample
 n_runs = 5
 filename = 'LinProbSigmoidSL64batch1e5LR0.001Noise2NetN0nTrial1CElossnTask'
 leaky = False if 'NoLeak' in filename else True
 encode = True
+activ_enc = 'relu'
 save = False
 
 if encode:
@@ -32,12 +33,19 @@ if encode:
 else:
     n_feat = n_in
 
+# encoder activation
+match activ_enc:
+    case 'relu':
+        activ = nn.ReLU()    
+    case 'Quad':
+        activ = util.Quadratic()
+
 # Tasks
 task = {"LinearClassificationHighDim":tasks.LinearClassificationHighDim}
 task_rules = util.assign_task_rules(task)
 task_num = len(task)
 
-n_tasks = np.array([2,3,6,12,24])
+n_tasks = np.array([3,6,9,12])
 
 # Environment
 timing = {'fixation': 100,
@@ -85,11 +93,11 @@ for n, n_task in enumerate(n_tasks):
             # Initialize encoder
             encoder = nn.Sequential(
                     nn.Linear(n_dim,100),
-                    nn.ReLU(),
+                    activ,
                     nn.Linear(100,100),
-                    nn.ReLU(),
+                    activ,
                     nn.Linear(100,40)
-                    )
+                    ).to(device)
             
             encoder.load_state_dict(checkpoint['encoder'])
                 
@@ -135,7 +143,8 @@ jitter = np.random.uniform(-jitter_scale, jitter_scale, means.shape)
 # plot
 fig, ax = plt.subplots(figsize=(2.5,2))
 for i in range(means.shape[1]):  # Loop through the 5 entries per task
-    ax.scatter(n_tasks * (1 + jitter[:, i]), means[:, i], color = 'tab:blue', s=10, label=f'Category {i+1}' if i == 0 else None)
+    ax.scatter(n_tasks * (1 + jitter[:, i]), means[:, i], color = 'tab:blue',
+               s=10, label=f'Category {i+1}' if i == 0 else None)
 ax.set_ylabel('Sparsity ($\%$)')
 ax.set_xlabel('# of tasks')
 ax.spines['top'].set_visible(False)
@@ -147,8 +156,8 @@ ax.set_xticks([2,10,30])
 ax.set_xticklabels([2,10,30])
 plt.ylim([0,100])
 #plt.legend(frameon=False,ncol=1,bbox_to_anchor=(1,.4),title='RT')
-#plt.savefig('r_squared.png',bbox_inches='tight',format='png',dpi=300,transparent=True)
-#plt.savefig('r_squared.eps',bbox_inches='tight',format='eps',dpi=300,transparent=True)
+#plt.savefig('sparsity.png',bbox_inches='tight',format='png',dpi=300,transparent=True)
+#plt.savefig('sparsity.eps',bbox_inches='tight',format='eps',dpi=300,transparent=True)
 plt.show()
 
 # Save

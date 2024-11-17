@@ -45,6 +45,7 @@ thres = 5           # DDM boundary
 n_sweep = 8         # Number of stimuli values to sweep
 encode = True
 activation = 'relu'
+activ_enc = 'relu'
 run = 4
 
 if encode:
@@ -76,12 +77,18 @@ net_file = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask' + str(n_ta
             ('Mix' if encode else '')  + (('run' + str(run)) if run != 0 else '')
 leaky = False if 'NoLeak' in net_file else True
             
+match activ_enc:
+    case 'relu':
+        activ = nn.ReLU()    
+    case 'Quad':
+        activ = util.Quadratic()
+
 # Encoder
 encoder = nn.Sequential(
         nn.Linear(n_dim,100),
-        nn.ReLU(),
+        activ,
         nn.Linear(100,100),
-        nn.ReLU(),
+        activ,
         nn.Linear(100,40)
         )
 

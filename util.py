@@ -5,6 +5,7 @@ Various utilities.
 import numpy as np
 from scipy import stats
 import torch
+import torch.nn as nn
 import plotly.graph_objects as go
 import plotly.io as pio
 import scipy.stats as stats
@@ -541,6 +542,7 @@ def network_mean_and_ci(data, confidence_level=0.95):
 
     """
     tasks, networks, neurons = data.shape
+    
     means = np.zeros((tasks,networks))
     confidence_intervals = np.zeros((tasks,networks,2))
     std_devs = np.zeros((tasks,networks))
@@ -566,3 +568,13 @@ def network_mean_and_ci(data, confidence_level=0.95):
     
     
     return means, confidence_intervals
+
+
+# Quadratic activation function
+
+class Quadratic(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        return x ** 2

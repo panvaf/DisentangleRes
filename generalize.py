@@ -46,6 +46,7 @@ save_decoders = False
 split = None
 split_var = False
 activation = 'relu'
+activ_enc = 'relu'
 filename = 'LinProbSigmoidSL64batch1e5LR0.001Noise2NetN0nTrial1CElossnTask'
 leaky = False if 'NoLeak' in filename else True
 encode = True
@@ -57,6 +58,13 @@ if encode:
         n_sd_in = 0
 else:
     n_feat = n_in
+
+# encoder activation function
+match activ_enc:
+    case 'relu':
+        activ = nn.ReLU()    
+    case 'Quad':
+        activ = util.Quadratic()
 
 # Reproducibility
 seed = 42  # 3
@@ -89,6 +97,13 @@ timing = {'fixation': 100,
 
 t_task = int(sum(timing.values())/dt)
 outputs = np.arange(t_task-1,trial_sz*t_task,t_task)
+
+# encoder activation function
+match activ_enc:
+    case 'relu':
+        activ = nn.ReLU()    
+    case 'Quad':
+        activ = util.Quadratic()
 
 # Compute number of iterations through quadrants and update number of fits
 n_quads = 2**n_dim
@@ -147,7 +162,8 @@ with device:
             
             # Load network
             data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
-            net_file = filename + str(n_task) + ('Mix' if encode else '') + (('run' + str(run)) if run != 0 else '')
+            net_file = filename + str(n_task) + ('Mix' if encode else '') + \
+                    (activ_enc if activ_enc != 'relu' else '') + (('run' + str(run)) if run != 0 else '')
             
             if 'LSTM' in net_file:
                 net = nn.LSTM(n_feat,n_neu,batch_first=True).to(device)
@@ -171,9 +187,9 @@ with device:
                 # Initialize encoder
                 encoder = nn.Sequential(
                         nn.Linear(n_dim,100),
-                        nn.ReLU(),
+                        activ,
                         nn.Linear(100,100),
-                        nn.ReLU(),
+                        activ,
                         nn.Linear(100,40)
                         ).to(device)
                 
