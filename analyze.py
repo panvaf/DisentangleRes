@@ -46,7 +46,7 @@ n_sweep = 8         # Number of stimuli values to sweep
 encode = True
 activation = 'relu'
 activ_enc = 'relu'
-run = 4
+run = 2
 
 if encode:
     n_feat = 40 + (1 if n_in>n_dim else 0)
@@ -247,22 +247,27 @@ plt.show()
 # Quantify and plot time-scale amplifications due to attractor dynamics
 
 # Eigenvalues of the forward system (not the difference system)
-mu = np.unique(sorted_eigenvals[:,0:2].real.flatten() + 1)
+mu = np.unique(sorted_eigenvals[:,0:2].flatten() + 1)
 
 # Network time scales of a discrete system
-tau_net = - dt / np.log(np.abs(mu))
+tau_net = dt / np.abs(np.log(np.abs(mu)))
 
 # time scale amplification factor p
-p = tau_net/tau
+A = tau_net/tau
 
 # plot histogram
-lim = 50
-plt.hist(p,1000)
-plt.title('Network timescale amplification due to attractor dynamics')
-plt.xlabel('Amplification factor $p$')
-plt.xlim([-lim,lim])
-plt.show()
+fig, ax = plt.subplots(figsize=(5, 3.5))
+ax.hist(A, bins=200, color='skyblue', edgecolor='black')
+ax.set_xlim([0, 145])
+ax.set_title('Network Timescale Amplification Due to Attractor Dynamics', fontsize=14)
+ax.set_xlabel('Amplification Factor $A$', fontsize=12)
+ax.set_ylabel('Count', fontsize=12)
+ax.grid(True, linestyle='--', alpha=0.6)
 
+plt.tight_layout()
+#plt.savefig('amplification.eps',bbox_inches='tight',format='eps',dpi=300,transparent=True)
+#plt.savefig('amplification.png',bbox_inches='tight',format='png',dpi=300,transparent=True)
+plt.show()
 
 # Obtain individual simulations to plot and compare location of trajectories
 tenvs = [value(timing=timing,sigma=n_sd_in,n_task=n_task,thres=thres,rule_vec=task_rules[key]) for key, value in task.items()]
