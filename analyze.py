@@ -46,7 +46,7 @@ n_sweep = 8         # Number of stimuli values to sweep
 encode = True
 activation = 'relu'
 activ_enc = 'relu'
-run = 2
+run = 0
 
 if encode:
     n_feat = 40 + (1 if n_in>n_dim else 0)
@@ -73,7 +73,7 @@ tenvs = [value(timing=timing,sigma=0,n_task=n_task,n_dim=n_dim,thres=thres,
 # Load network
 data_path = str(Path(os.getcwd()).parent) + '/trained_networks/'
 #net_file = 'Joint64batch1e3'
-net_file = 'LinCentOutTanhSL64batch1e5LR0.001Noise2NetN0nTrial1nTask' + str(n_task) + \
+net_file = 'LinProbSigmoidSL64batch1e5LR0.001Noise2NetN0nTrial1CElossnTask' + str(n_task) + \
             ('Mix' if encode else '')  + (('run' + str(run)) if run != 0 else '')
 leaky = False if 'NoLeak' in net_file else True
             

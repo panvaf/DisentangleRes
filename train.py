@@ -35,7 +35,7 @@ n_sd_in = 2         # standard deviation of input noise
 n_sd_net = 0        # standard deviation of network noise
 n_dim = 2           # dimensionality of state space
 print_every = int(n_batch/100)
-n_out = 24          # number of outputs per task
+n_task = 24         # number of tasks
 bal_err = False     # whether to balance penalization of decision vs. integration
 pen_end = False     # only penalize final time point
 trial_num = 1       # number of trials drawn in a row
@@ -95,7 +95,7 @@ net_file = 'LinProbSigmoidSL' + str(n_neu) + (('Bound' + str(bound)) if bound !=
             (('nLayer' + str(n_layer)) if network == 'gpt-2' else '')  + \
             (('nHead' + str(n_head)) if network == 'gpt-2' else '')  + \
             ('CEloss' if CE_loss else '') + \
-            (('nTask' + str(n_out)) if n_out != 2 else '')  + \
+            (('nTask' + str(n_task)) if n_task != 2 else '')  + \
             (('Delay' + str(timing['delay'])) if timing['delay'] != 0 else '')  + \
             ('BalErr' if bal_err else '') + ('RandPen' if rand_pen else '') + \
             ('PenEnd' if pen_end else '') + ('Mix' if encode else '') + \
@@ -103,7 +103,7 @@ net_file = 'LinProbSigmoidSL' + str(n_neu) + (('Bound' + str(bound)) if bound !=
             (('run' + str(run)) if run != 0 else '')
 
 # Make supervised datasets
-tenvs = [value(timing=timing,sigma=n_sd_in,n_task=n_out,n_dim=n_dim,thres=bound,
+tenvs = [value(timing=timing,sigma=n_sd_in,n_task=n_task,n_dim=n_dim,thres=bound,
                corr=corr,ar_coef=autocorr,dist=dist,rule_vec=task_rules[key]) for key, value in task.items()]
 
 datasets = [ngym.Dataset(tenv,batch_size=batch_sz,seq_len=trial_num*t_task) for tenv in tenvs]
@@ -113,19 +113,19 @@ env = datasets[0].env
 
 # Network input and output size
 n_in = env.observation_space.shape[0]
-#n_out = env.action_space.n
+#n_task = env.action_space.n
 
 # Mask to weight errors during integration and decision equally
 if bal_err:
     mask_w = (sum(timing.values()) - grace - timing['decision'])/timing['decision']
     mask = np.ones((batch_sz,n_trial,1)); mask[:,-n_decision-n_grace:-n_decision] = 0
-    mask[:,-n_decision:] = mask_w; mask = np.tile(mask,(1,4,n_out))
+    mask[:,-n_decision:] = mask_w; mask = np.tile(mask,(1,4,n_task))
 elif pen_end:
-    mask = np.zeros((batch_sz,t_task,n_out))
+    mask = np.zeros((batch_sz,t_task,n_task))
     mask[:,-1,:] = 1
     mask = np.tile(mask,(1,trial_num,1))
 else:
-    mask = np.ones((batch_sz,trial_num*t_task,n_out))
+    mask = np.ones((batch_sz,trial_num*t_task,n_task))
     
 match activ_enc:
     case 'relu':
@@ -150,7 +150,7 @@ if encode:
 device = torch.device('cpu')
     
 if network == 'RNN':
-    net = RNN(n_in,n_neu,n_out*task_num,n_sd_net,activation,tau,dt,leaky,init).to(device)
+    net = RNN(n_in,n_neu,n_task*task_num,n_sd_net,activation,tau,dt,leaky,init).to(device)
 elif network == 'LSTM':
     net = nn.LSTM(n_in,n_neu,batch_first=True).to(device)
 elif network == 'gpt-2':
@@ -180,14 +180,14 @@ for param in encoder.parameters():
 # Decoder
 if CE_loss:
     decoder = nn.Sequential(
-            nn.Linear(n_neu,n_out*task_num),
+            nn.Linear(n_neu,n_task*task_num),
             nn.Sigmoid()
             ).to(device)
     # for confusion matrix
     threshold = .5; labels = [0,1]
 else:
     decoder = nn.Sequential(
-            nn.Linear(n_neu,n_out*task_num),
+            nn.Linear(n_neu,n_task*task_num),
             nn.Tanh()
             ).to(device)
     threshold = 0; labels = [-1,1]
@@ -223,15 +223,15 @@ with device:
         
         # Construct mask to penalize specific time moment
         if rand_pen:
-            mask = np.zeros((batch_sz,t_task,n_out))
+            mask = np.zeros((batch_sz,t_task,n_task))
             mask[:,np.random.randint(5,t_task),:] = 1
             mask = np.tile(mask,(1,trial_num,1))
         
         # Reshape for multiple tasks
-        masker = np.zeros((batch_sz,trial_num*t_task,n_out*task_num))
-        masker[:,:,task*n_out:(task+1)*n_out] = mask
-        targets = np.zeros((batch_sz,trial_num*t_task,n_out*task_num))
-        targets[:,:,task*n_out:(task+1)*n_out] = target
+        masker = np.zeros((batch_sz,trial_num*t_task,n_task*task_num))
+        masker[:,:,task*n_task:(task+1)*n_task] = mask
+        targets = np.zeros((batch_sz,trial_num*t_task,n_task*task_num))
+        targets[:,:,task*n_task:(task+1)*n_task] = target
         
         # Turn into tensors
         inputs = torch.from_numpy(inputs).type(torch.float).to(device)
