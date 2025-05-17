@@ -1,0 +1,12 @@
+numpy>=1.20.0
+scipy>=1.7.0
+torch>=1.12.0
+matplotlib>=3.5.0
+plotly>=5.10.0
+scikit-learn>=1.0.0
+transformers>=4.21.0
+pathlib>=1.0.1
+# neurogym needs to be installed separately:
+# git clone https://github.com/gyyang/neurogym.git
+# cd neurogym
+# pip install -e .

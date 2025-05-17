@@ -53,7 +53,7 @@ ax.errorbar(n_tasks*off_m,perc_quad[1],yerr=[perc_quad[1]-perc_quad[0],
                     perc_quad[2]-perc_quad[1]],linestyle='',color='firebrick')
 ax.axhline(0.9,color='lightblue',linestyle='--',zorder=-1,linewidth=1)
 ax.axhline(0.997,color='lightblue',linestyle='--',zorder=-1,linewidth=1)
-ax.set_ylabel('$r^2$')
+ax.set_ylabel('Out-of-distribution $r^2$')
 ax.set_xlabel('# of tasks')
 ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
